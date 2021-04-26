@@ -62,7 +62,7 @@ TXN_QUERIES = {
 #        "updateOrderLine": "UPDATE default:default.tpcc.ORDER_LINE SET OL_DELIVERY_D = $1 WHERE OL_O_ID = $2 AND OL_D_ID = $3 AND OL_W_ID = $4", # o_entry_d, no_o_id, d_id, w_id
         "updateOrderLine": "UPDATE default:default.tpcc.orders SET ol.ol_delivery_d = $1 FOR ol IN o_orderline END WHERE o_id = $2 AND o_d_id = $3 AND o_w_id = $4", # o_entry_d, no_o_id, d_id, w_id
 #        "sumOLAmount": "SELECT SUM(OL_AMOUNT) AS SUM_OL_AMOUNT FROM default:default.tpcc.ORDER_LINE WHERE OL_O_ID = $1 AND OL_D_ID = $2 AND OL_W_ID = $3", # no_o_id, d_id, w_id
-        "sumOLAmount": "SELECT VALUE (SELECT SUM(ol.ol_amount) as sum_ol_amount FROM o.o_orderline ol)[0] FROM default:default.tpcc.orders o where o.o_id = $1 and o.o_d_id = $2 and o.o_w_id = $3"
+        "sumOLAmount": "SELECT VALUE (SELECT SUM(ol.ol_amount) as sum_ol_amount FROM o.o_orderline ol)[0] FROM default:default.tpcc.orders o where o.o_id = $1 and o.o_d_id = $2 and o.o_w_id = $3",
         "updateCustomer": "UPDATE default:default.tpcc.customer USE KEYS [(to_string($4) || '.' || to_string($3) || '.' ||  to_string($2))] SET c_balance = c_balance + $1 ", # ol_total, c_id, d_id, w_id
     },
     "NEW_ORDER": {
