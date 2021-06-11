@@ -1,0 +1,70 @@
+1. Ensure you only have zero or one bucket in your instance.  This package will create NINE buckets.
+2. cwpy/util/cbcrbucket.sh is going to create the nine buckets.
+   Verify the data path location, IP address, userid, password in this script in two places.
+
+   Site=http://127.0.0.1:8091/pools/default/buckets/
+   Auth=Administrator:password
+
+3. execute: sh -x util/cbcrbucket.sh 127.0.0.1:8091 Administrator:password> 11224
+   In case the parameters are missing, the default values as mentioned above will be considered
+   First Paramter : Couchbase Host IP:Couchbase Port
+   Second Parameter: Credentials for Rest API : <User Id>:<Password>
+   Third Parameter: Bucket Port if any
+
+4. create the indices required.
+   util/run_sql.sh < util/cbcrindex.sql
+
+5. load the data (normalized)
+
+    python ./tpcc.py --warehouses 1 --no-execute n1ql --query-url 127.0.0.1:8093 --userid Administrator --password password
+
+    For cluster run
+    python ./tpcc.py --warehouses 1 --no-execute n1ql --query-url 127.0.0.1:9499 --userid Administrator --password password
+
+    You can change the number of warehouses to change the size of the size of the data loaded.
+
+    If you'd like to run the queries, you can execute the following.
+    This runs the tests with 10 concurrent threads for 600 seconds.
+
+    python ./tpcc.py --warehouses 1 --duration 600 --clients 10 n1ql --query-url 127.0.0.1:8093 --userid Administrator --password password
+    
+    For running with N1QL transactions enabled:
+    sh -x ./cbcrbucket.sh 127.0.0.1:8091 Administrator:password
+    ./run_sql.sh < ./cbcrindex.sql
+    To load
+    python ./tpcc.py --warehouses 1 --no-execute nest --query-url 127.0.0.1:8093 --userid Administrator --password password
+    To run
+    python ./tpcc.py --warehouses 1 --duration 600 --clients 10 nest --query-url localhost:8093 --no-load  --userid Administrator --password password
+    
+    For running with exact TPCC schema
+    To load
+    python ./tpcc.py --warehouses 1 --no-execute nesttpcc --query-url 127.0.0.1:8093 --userid Administrator --password password
+    To run
+    python ./tpcc.py --warehouses 1 --duration 600 --clients 10 nesttpcc --query-url localhost:8093 --no-load  --userid Administrator --password password
+
+    
+    For running with N1QL transactions enabled on denormalized schema:
+    cd util
+    sh -x ./cbcrbucket.sh 127.0.0.1:8091 Administrator:password
+    ./run_sql.sh < ./cbcrindexdenorm.sql
+    cd ..
+    To load
+    python ./tpcc.py --warehouses 1 --no-execute nestdenorm --query-url 127.0.0.1:8093 --userid Administrator --password password
+    To run
+    python ./tpcc.py --warehouses 1 --duration 600 --clients <no of clients> nestdenorm --query-url <server ip> --no-load --userid Administrator --password password
+    
+    For running with N1QL transactions with collections enabled:
+
+    cp constants.py.collections constants.py
+    cd util
+    sh -x ./cbcrbucketcollection.sh 127.0.0.1:8091 Administrator:password
+    ./run_sqlcollections.sh < ./cbcrindexcollection.sql
+    
+    cd ..
+    To load
+    python ./tpcc.py --warehouses 1 --no-execute nestcollections --query-url 127.0.0.1:8093 --userid Administrator --password password
+    To run
+    python ./tpcc.py --warehouses 1 --duration 600 --clients 10 nestcollections --query-url 127.0.0.1:8093 --no-load --userid Administrator --password password
+
+    
+
