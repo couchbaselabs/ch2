@@ -284,7 +284,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     if not args['no_execute']:
-        if (duration == None and numTClients > 0):
+        if (duration == None and numAClients == 0):
             logging.info("Need a duration parameter for transaction clients to run")
             sys.exit(0)
 
