@@ -97,9 +97,7 @@ class Executor:
                     queryIterNum += 1
                     r.query_times.append(val[0]) #executeTransaction returns a tuple [query_times, status]
                     
-                    # Stopping criteria for warmup run based on query iterations.
-                    # Will not be triggered for actual benchmark run where the stopping criteria
-                    # is the duration of the run, as numQueryIterations will be 0.
+                    # Stopping criteria based on query iterations.
                     if duration == None:
                         if queryIterNum == numQueryIterations:
                             self.qDone.put('done')
