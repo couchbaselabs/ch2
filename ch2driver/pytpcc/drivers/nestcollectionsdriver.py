@@ -554,9 +554,7 @@ class NestcollectionsDriver(AbstractDriver):
             return
         logging.debug("Loading %d tuples for tableName %s" % (len(tuples), tableName))
         assert tableName in TABLE_COLUMNS, "Unexpected table %s" % tableName
-        columns = TABLE_COLUMNS[tableName]
-        ol_columns = TABLE_COLUMNS[constants.TABLENAME_ORDERLINE]
-        num_columns = range(len(columns))
+        
         for t in tuples:
                 self.loadOneDoc(tableName, t, False)
         return
