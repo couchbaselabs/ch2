@@ -5,7 +5,7 @@ Download the tpcds-tools from http://tpc.org/tpc_documents_current_versions/down
 Modify tpcds/tools/expr.h line 95 to:
 #define MAX_ARGS        63
 
-Use the templates specified in ch2/querygen
+Use the templates specified in ch2/querygen/query_templates
 Copy the templates to tpcds/query_templates
 
 cd tpcds/tools
