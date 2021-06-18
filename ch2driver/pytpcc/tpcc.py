@@ -233,7 +233,7 @@ if __name__ == '__main__':
                          help='Enable debug log messages')
     aparser.add_argument('--durability_level',
                          help='durability level', default="majority")
-    aparser.add_argument('--txtimeout', metavar='N', type=float, default=200,
+    aparser.add_argument('--txtimeout', metavar='N', type=float, default=3,
                          help='txtimeout number in sec(ex: 2.5)')
     aparser.add_argument('--scan_consistency', metavar='not_bounded', default="not_bounded",
                          help='not_bounded,request_plus')
