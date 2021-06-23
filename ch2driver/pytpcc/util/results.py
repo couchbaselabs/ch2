@@ -146,7 +146,7 @@ class Results:
                 ret += "\n\n\nTransaction Execution Results after %d seconds\n%s" % (duration, line)
         else:
             if queryIterations == 1:
-                ret += "\n\n\nTranscation Execution Results after %d query iteration\n%s" % (queryIterations, line)
+                ret += "\n\n\nTransaction Execution Results after %d query iteration\n%s" % (queryIterations, line)
             else:
                 ret += "\n\n\nTransaction Execution Results after %d query iterations\n%s" % (queryIterations, line)
         ret += f % ("", "Executed", u"Time (µs)", "Rate")
