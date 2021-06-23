@@ -6,7 +6,7 @@ Url=${1:-127.0.0.1}
 Auth=${2:-Administrator:password}
 replica=${3:-0}
 Site=http://$Url:8091/pools/default/buckets/
-bucket_memory=(25600)
+bucket_memory=(2560)
 bucket=(bench)
 collections=(customer district history item neworder orders stock warehouse supplier nation region)
 
