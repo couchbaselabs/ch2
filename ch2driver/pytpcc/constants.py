@@ -152,18 +152,18 @@ MAX_PAYMENT = 5000.0
 ORIGINAL_STRING = "ORIGINAL"
 
 # Table Names
-TABLENAME_ITEM       = "default:default.tpcc.item"
-TABLENAME_WAREHOUSE  = "default:default.tpcc.warehouse"
-TABLENAME_DISTRICT   = "default:default.tpcc.district"
-TABLENAME_CUSTOMER   = "default:default.tpcc.customer"
-TABLENAME_STOCK      = "default:default.tpcc.stock"
-TABLENAME_ORDERS     = "default:default.tpcc.orders"
-TABLENAME_NEWORDER   = "default:default.tpcc.neworder"
+TABLENAME_ITEM       = "default:bench.ch2.item"
+TABLENAME_WAREHOUSE  = "default:bench.ch2.warehouse"
+TABLENAME_DISTRICT   = "default:bench.ch2.district"
+TABLENAME_CUSTOMER   = "default:bench.ch2.customer"
+TABLENAME_STOCK      = "default:bench.ch2.stock"
+TABLENAME_ORDERS     = "default:bench.ch2.orders"
+TABLENAME_NEWORDER   = "default:bench.ch2.neworder"
 TABLENAME_ORDERLINE  = "orderline"
-TABLENAME_HISTORY    = "default:default.tpcc.history"
-TABLENAME_SUPPLIER   = "default:default.tpcc.supplier"
-TABLENAME_NATION     = "default:default.tpcc.nation"
-TABLENAME_REGION     = "default:default.tpcc.region"
+TABLENAME_HISTORY    = "default:bench.ch2.history"
+TABLENAME_SUPPLIER   = "default:bench.ch2.supplier"
+TABLENAME_NATION     = "default:bench.ch2.nation"
+TABLENAME_REGION     = "default:bench.ch2.region"
 
 ALL_TABLES = [
     TABLENAME_ITEM,

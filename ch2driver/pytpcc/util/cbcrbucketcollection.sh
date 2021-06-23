@@ -3,14 +3,12 @@
 echo Delete Buckets
 
 Url=${1:-127.0.0.1}
-Site=http://$Url:8091/pools/default/buckets/
 Auth=${2:-Administrator:password}
-#memory = (512 100 128 128 256 1024 1024 512 '218)#@memory = ("512" "100" "128" "128" "256" "1024" "1024" "512" "218")
-#bucket_memory=(512 100 128 128 256 1024 1024 512 218)
-bucket_memory=(2048)
-bucket=(default)
+replica=${3:-0}
+Site=http://$Url:8091/pools/default/buckets/
+bucket_memory=(25600)
+bucket=(bench)
 collections=(customer district history item neworder orders stock warehouse supplier nation region)
-#bucket_memory = (100 100 100 100 100 100 100 100 100)
 
 numberOfBuckets=${#bucket[@]}
 echo POST /pools/default/buckets
@@ -35,47 +33,42 @@ echo "Creating Buckets"
 
 # Bucket Params
 Site=http://$Url:8091/pools/default/buckets
-port=${3:-11224}
-low=${3:-3}
-high=${3:-8}
+port=${4:-11224}
+low=${4:-3}
+high=${4:-8}
 
 # Create bucket
 for ((i=0; i < 1 ; i++))
 do
-	echo curl -X POST -u $Auth -d name=${bucket[$i]} -d ramQuotaMB=${bucket_memory[$i]} -d authType=none $Site -d threadsNumber=$high -d replicaNumber=0
+	echo curl -X POST -u $Auth -d name=${bucket[$i]} -d ramQuotaMB=${bucket_memory[$i]} -d authType=none $Site -d threadsNumber=$high -d replicaNumber=$replica
 let port\+=1
-curl -X POST -u $Auth -d name=${bucket[$i]} -d ramQuotaMB=${bucket_memory[$i]} -d authType=none  $Site -d threadsNumber=$high -d replicaNumber=0
+curl -X POST -u $Auth -d name=${bucket[$i]} -d ramQuotaMB=${bucket_memory[$i]} -d authType=none  $Site -d threadsNumber=$high -d replicaNumber=$replica
 let port\+=1
 done
 
 echo "sleep 30 seconds"
 sleep 30
 #create scope
-echo curl http://$Url:9499/query/service -u $Auth -d 'statement=create scope default.tpcc'
-curl http://$Url:8093/query/service -u $Auth -d 'statement=create scope default.tpcc'
+echo curl http://$Url:8093/query/service -u $Auth -d 'statement=create scope bench.ch2'
+curl http://$Url:8093/query/service -u $Auth -d 'statement=create scope bench.ch2'
 
 sleep 30
 #create collections
-echo curl http://$Url:9499/query/service -u $Auth -d 'statement=create collection default.tpcc.customer'
-curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection default.tpcc.customer'
-echo curl http://$Url:9499/query/service -u $Auth -d 'statement=create collection default.tpcc.district'
-curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection default.tpcc.district'
-echo curl http://$Url:9499/query/service -u $Auth -d 'statement=create collection default.tpcc.history'
-curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection default.tpcc.history'
-echo curl http://$Url:9499/query/service -u $Auth -d 'statement=create collection default.tpcc.item'
-curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection default.tpcc.item'
-echo curl http://$Url:9499/query/service -u $Auth -d 'statement=create collection default.tpcc.neworder'
-curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection default.tpcc.neworder'
-echo curl http://$Url:9499/query/service -u $Auth -d 'statement=create collection default.tpcc.orders'
-curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection default.tpcc.orders'
-echo curl http://$Url:9499/query/service -u $Auth -d 'statement=create collection default.tpcc.stock'
-curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection default.tpcc.stock'
-echo curl http://$Url:9499/query/service -u $Auth -d 'statement=create collection default.tpcc.warehouse'
-curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection default.tpcc.warehouse'
-echo curl http://$Url:9499/query/service -u $Auth -d 'statement=create collection default.tpcc.supplier'
-curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection default.tpcc.supplier'
-echo curl http://$Url:9499/query/service -u $Auth -d 'statement=create collection default.tpcc.nation'
-curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection default.tpcc.nation'
-echo curl http://$Url:9499/query/service -u $Auth -d 'statement=create collection default.tpcc.region'
-curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection default.tpcc.region'
-
+echo curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection bench.ch2.CUSTOMER'
+curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection bench.ch2.CUSTOMER'
+echo curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection bench.ch2.DISTRICT'
+curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection bench.ch2.DISTRICT'
+echo curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection bench.ch2.HISTORY'
+curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection bench.ch2.HISTORY'
+echo curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection bench.ch2.ITEM'
+curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection bench.ch2.ITEM'
+echo curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection bench.ch2.NEW_ORDER'
+curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection bench.ch2.ORDERS'
+echo curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection bench.ch2.ORDER_LINE'
+curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection bench.ch2.ORDER_LINE'
+echo curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection bench.ch2.STOCK'
+curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection bench.ch2.STOCK'
+echo curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection bench.ch2.WAREHOUSE'
+curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection bench.ch2.WAREHOUSE'
+echo curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection bench.ch2.ORDERS'
+curl http://$Url:8093/query/service -u $Auth -d 'statement=create collection bench.ch2.NEW_ORDER'
