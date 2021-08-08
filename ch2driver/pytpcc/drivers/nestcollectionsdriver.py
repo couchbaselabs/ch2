@@ -488,7 +488,7 @@ class NestcollectionsDriver(AbstractDriver):
         self.cursor = None
         self.tx_status = ""
         self.txtimeout = TxTimeoutFactor(os.environ["TXTIMEOUT"], 1)
-        self.delivery_txtimeout = TxTimeoutFactor(os.environ["TXTIMEOUT"], 1)
+        self.delivery_txtimeout = TxTimeoutFactor(os.environ["DELTXTIMEOUT"], 10)
         self.stock_txtimeout = TxTimeoutFactor(os.environ["TXTIMEOUT"], 40)
         self.denormalize = False
         self.w_orders = {}
@@ -635,10 +635,11 @@ class NestcollectionsDriver(AbstractDriver):
         o_carrier_id = params["o_carrier_id"]
         ol_delivery_d = params["ol_delivery_d"]
      
-        rs, status = runNQuery("begin", self.prepared_dict[ txn + "beginWork"],"",self.delivery_txtimeout, randomhost)
-        txid = rs[0]['txid']
         result = [ ]
         for d_id in range(1, constants.DISTRICTS_PER_WAREHOUSE+1):
+            rs1, status = runNQuery("begin", self.prepared_dict[ txn + "beginWork"],"",self.delivery_txtimeout, randomhost)
+            txid = rs1[0]['txid']
+            
             newOrder, status = runNQueryParam(self.prepared_dict[ txn + "getNewOrder"], [d_id, w_id], txid, randomhost)
             if len(newOrder) == 0:
                 assert len(newOrder) > 0
@@ -679,9 +680,9 @@ class NestcollectionsDriver(AbstractDriver):
                 continue
 
             result.append((d_id, no_o_id))
+            trs, self.tx_status = runNQuery("commit", self.prepared_dict[ txn + "commitWork"],txid,"",randomhost)
         ## FOR
 
-        trs, self.tx_status = runNQuery("commit", self.prepared_dict[ txn + "commitWork"],txid,"",randomhost)
         return result
 
     ## ----------------------------------------------

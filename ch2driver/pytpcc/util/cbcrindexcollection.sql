@@ -3,7 +3,7 @@ drop index di_id_w_id on bench.ch2.district USING GSI;
 drop index no_o_id_d_id_w_id on bench.ch2.neworder USING GSI;
 drop index or_id_d_id_w_id_c_id on bench.ch2.orders USING GSI;
 drop index or_w_id_d_id_c_id on bench.ch2.orders USING GSI;
-drop index wh_id on USING GSI bench.ch2.warehouse USING GSI;
+drop index wh_id on bench.ch2.warehouse USING GSI;
 
 drop primary index on bench.ch2.customer USING GSI;
 drop primary index on bench.ch2.district USING GSI;
