@@ -488,7 +488,7 @@ class NestcollectionsDriver(AbstractDriver):
         self.cursor = None
         self.tx_status = ""
         self.txtimeout = TxTimeoutFactor(os.environ["TXTIMEOUT"], 1)
-        self.delivery_txtimeout = TxTimeoutFactor(os.environ["DELTXTIMEOUT"], 10)
+        self.delivery_txtimeout = TxTimeoutFactor(os.environ["TXTIMEOUT"], 10)
         self.stock_txtimeout = TxTimeoutFactor(os.environ["TXTIMEOUT"], 40)
         self.denormalize = False
         self.w_orders = {}
