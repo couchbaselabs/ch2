@@ -43,17 +43,20 @@ from util import *
 
 
 class Executor:
-    def __init__(self, clientId, driver, qDone, scaleParameters, TAFlag, stop_on_error = False):
+    def __init__(self, clientId, driver, qDone, warmupDurationQ, scaleParameters, TAFlag, warmupDuration, warmupQueryIterations, stop_on_error = False):
         self.clientId = clientId
         self.TAFlag = TAFlag
         self.driver = driver
         self.qDone = qDone
+        self.warmupDurationQ = warmupDurationQ
+        self.warmupDuration = warmupDuration
+        self.warmupQueryIterations = warmupQueryIterations
         self.scaleParameters = scaleParameters
         self.stop_on_error = stop_on_error
     ## DEF
     
-    def execute(self, duration, numQueryIterations, numAnalyticsClients):
-        r = results.Results()
+    def execute(self, duration, numQueryIterations, warmupDuration, warmupQueryIterations, numAnalyticsClients):
+        r = results.Results(warmupDuration, warmupQueryIterations)
         assert r
         if duration != None:
             if duration == 1:
@@ -75,6 +78,14 @@ class Executor:
             etime = stime + duration
 
         while 1:
+            if self.warmupDuration == None and self.warmupQueryIterations != None and queryIterNum == self.warmupQueryIterations:
+                self.warmupDuration = time.time() - start
+                self.warmupDurationQ.put(self.warmupDuration)
+            if self.warmupDurationQ.qsize() > 0:
+                r.warmupDuration = self.warmupDurationQ.get()
+                self.warmupDuration = r.warmupDuration
+                self.warmupDurationQ.put(r.warmupDuration)
+                
             if duration != None:
                 if (time.time() - start) > duration:
                     break
@@ -117,7 +128,6 @@ class Executor:
                 continue
 
             #if debug: logging.debug("%s\nParameters:\n%s\nResult:\n%s" % (txn, pformat(params), pformat(val)))
-            
             r.stopTransaction(txn_id, status)
         ## WHILE
         r.stopBenchmark()

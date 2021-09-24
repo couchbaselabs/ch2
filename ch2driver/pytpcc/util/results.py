@@ -30,11 +30,12 @@ import constants
 
 class Results:
     
-    def __init__(self):
+    def __init__(self, warmupDuration, warmupQueryIterations):
         self.start = None
         self.stop = None
         self.txn_id = 0
-        
+        self.warmupDuration = warmupDuration
+        self.warmupQueryIterations = warmupQueryIterations
         self.txn_counters = { }
         self.txn_status = { }
         self.txn_times = { }
@@ -67,32 +68,34 @@ class Results:
         txn_name, txn_start = self.running[id]
         del self.running[id]
 
-        if txn_name not in self.txn_status :
-             self.txn_status[txn_name] = {}
+        if self.warmupDuration != None and (txn_start >= self.start + self.warmupDuration):
+            if txn_name not in self.txn_status :
+                self.txn_status[txn_name] = {}
 
-        status = "aborted"
-        cnt = self.txn_status[txn_name].get(status, 0)
-        self.txn_status[txn_name][status] = cnt + 1
+            status = "aborted"
+            cnt = self.txn_status[txn_name].get(status, 0)
+            self.txn_status[txn_name][status] = cnt + 1
         
     def stopTransaction(self, id, status):
         """Record that the benchmark completed an invocation of the given transaction"""
         assert id in self.running
         txn_name, txn_start = self.running[id]
         del self.running[id]
-        
-        duration = time.time() - txn_start
-        total_time = self.txn_times.get(txn_name, 0)
-        self.txn_times[txn_name] = total_time + duration
 
-        total_cnt = self.txn_counters.get(txn_name, 0)
-        self.txn_counters[txn_name] = total_cnt + 1
+        if self.warmupDuration != None and (txn_start >= self.start + self.warmupDuration):
+            duration = time.time() - txn_start
+            total_time = self.txn_times.get(txn_name, 0)
+            self.txn_times[txn_name] = total_time + duration
 
-        if txn_name not in self.txn_status :
-             self.txn_status[txn_name] = {}
+            total_cnt = self.txn_counters.get(txn_name, 0)
+            self.txn_counters[txn_name] = total_cnt + 1
 
-        if status != "":
-            cnt = self.txn_status[txn_name].get(status, 0)
-            self.txn_status[txn_name][status] = cnt + 1
+            if txn_name not in self.txn_status :
+                self.txn_status[txn_name] = {}
+
+            if status != "":
+                cnt = self.txn_status[txn_name].get(status, 0)
+                self.txn_status[txn_name][status] = cnt + 1
 
     def append(self, r):
         for txn_name in r.txn_counters.keys():
@@ -122,13 +125,17 @@ class Results:
     def show(self, duration, queryIterations, numClients, numAClients, load_time = None):
         if self.start == None:
             return "Benchmark not started"
+        if self.warmupDuration == None:
+            warmupTime = 0
+        else:
+            warmupTime = self.warmupDuration
         if duration == None:
             if self.stop == None:
-                res_duration = time.time() - self.start
+                res_duration = time.time() - self.start - warmupTime
             else:
-                res_duration = self.stop - self.start
+                res_duration = self.stop - self.start - warmupTime
         else:
-            res_duration = duration
+            res_duration = duration - warmupTime
 
         col_width = 15
         total_width = (col_width*5)
@@ -140,15 +147,28 @@ class Results:
             ret += "Data Loading Time: %d seconds\n\n" % (load_time)
 
         if duration != None:
-            if duration == 1:
-                ret += "\n\n\nTransaction Execution Results after %d second\n%s" % (duration, line)
+            if warmupTime == 0:
+                if duration == 1:
+                    ret += "\n\n\nTransaction Execution Results after %d second\n%s" % (duration, line)
+                else:
+                    ret += "\n\n\nTransaction Execution Results after %d seconds\n%s" % (duration, line)
             else:
-                ret += "\n\n\nTransaction Execution Results after %d seconds\n%s" % (duration, line)
+                if duration == 1:
+                    ret += "\n\n\nTransaction Execution Results after %d second with warmup of %d seconds \n%s" % (duration, warmupTime, line)
+                else:
+                    ret += "\n\n\nTransaction Execution Results after %d seconds with warmup of %d seconds\n%s" % (duration, warmupTime, line)
+ 
         else:
-            if queryIterations == 1:
-                ret += "\n\n\nTransaction Execution Results after %d query iteration\n%s" % (queryIterations, line)
+            if self.warmupQueryIterations == None: 
+                if queryIterations == 1:
+                    ret += "\n\n\nTransaction Execution Results after %d query iteration\n%s" % (queryIterations, line)
+                else:
+                    ret += "\n\n\nTransaction Execution Results after %d query iterations\n%s" % (queryIterations, line)
             else:
-                ret += "\n\n\nTransaction Execution Results after %d query iterations\n%s" % (queryIterations, line)
+                if queryIterations == 1:
+                    ret += "\n\n\nTransaction Execution Results after %d query iteration with %d warmup query iteration\n%s" % (queryIterations, self.warmupQueryIterations, line)
+                else:
+                    ret += "\n\n\nTransaction Execution Results after %d query iterations with %d warmup query iterations\n%s" % (queryIterations, self.warmupQueryIterations, line)
         ret += f % ("", "Executed", u"Time (µs)", "Rate")
         total_txn_time = 0
         total_txn_cnt = 0
@@ -182,15 +202,28 @@ class Results:
         f = "\n  " + (("%-" + str(col_width) + "s")*6)
         line = "-"*total_width
         if duration != None:
-            if duration == 1:
-                ret += "\n\n\nAnalytics Execution Results after %d second\n%s" % (duration, line)
+            if warmupTime == 0:
+                if duration == 1:
+                    ret += "\n\n\nAnalytics Execution Results after %d second\n%s" % (duration, line)
+                else:
+                    ret += "\n\n\nAnalytics Execution Results after %d seconds\n%s" % (duration, line)
             else:
-                ret += "\n\n\nAnalytics Execution Results after %d seconds\n%s" % (duration, line)
+                if duration == 1:
+                    ret += "\n\n\nAnalytics Execution Results after %d second with warmup of %d seconds \n%s" % (duration, warmupTime, line)
+                else:
+                    ret += "\n\n\nAnalytics Execution Results after %d seconds with warmup of %d seconds\n%s" % (duration, warmupTime, line)
         else:
-            if queryIterations == 1:
-                ret += "\n\n\nAnalytics Execution Results after %d query iteration\n%s" % (queryIterations, line)
+            if self.warmupQueryIterations == None: 
+                if queryIterations == 1:
+                    ret += "\n\n\nAnalytics Execution Results after %d query iteration\n%s" % (queryIterations, line)
+                else:
+                    ret += "\n\n\nAnalytics Execution Results after %d query iterations\n%s" % (queryIterations, line)
             else:
-                ret += "\n\n\nAnalytics Execution Results after %d query iterations\n%s" % (queryIterations, line)
+                if queryIterations == 1:
+                    ret += "\n\n\nAnalytics Execution Results after %d query iteration with %d warmup query iteration\n%s" % (queryIterations, self.warmupQueryIterations, line)
+                else:
+                    ret += "\n\n\nAnalytics Execution Results after %d query iterations with %d warmup query iterations\n%s" % (queryIterations, self.warmupQueryIterations, line)
+
         total_analytics_time = 0
         total_analytics_cnt = 0
         overall_avg_resp_time = {"Q01": [0, 0], "Q02": [0, 0], "Q03": [0, 0], "Q04": [0, 0], "Q05": [0, 0], "Q06": [0, 0],
@@ -210,7 +243,11 @@ class Results:
         for qry_times in self.query_times: #qry_times is an array element, each element corresponds to one client
             ret += f % ("Client", "Query", "Loop", "Start Time", "End Time", u"Elapsed Time (s)")
             partialLoop = False
+            loopNum = 0
             for qry_dict in qry_times: # each dict corresponds to one loop of query execution
+                loopNum += 1
+                if loopNum <= self.warmupQueryIterations:
+                    continue
                 geo_mean = 1
                 total_time = 0
                 numQueriesPerIteration = len(qry_dict)

@@ -126,7 +126,7 @@ def loaderFunc(clientId, driverClass, scaleParameters, args, config, w_ids, debu
 ## ==============================================
 ## startExecution
 ## ==============================================
-def startExecution(driverClass, qDone, scaleParameters, args, config):
+def startExecution(driverClass, qDone, warmupDurationQ, warmupDuration, warmupQueryIterations, scaleParameters, args, config):
     numTClients = args['tclients']
     numAClients = args['aclients']
     numClients = numTClients + numAClients
@@ -145,7 +145,7 @@ def startExecution(driverClass, qDone, scaleParameters, args, config):
         else:
             TAFlag = "T"
 
-        r = pool.apply_async(executorFunc, (i, TAFlag, driverClass, qDone, numAClients, scaleParameters, args, config, debug))
+        r = pool.apply_async(executorFunc, (i, TAFlag, driverClass, qDone, warmupDurationQ, warmupDuration, warmupQueryIterations, numAClients, scaleParameters, args, config, debug))
         worker_results.append(r)
 
     ## FOR
@@ -154,13 +154,15 @@ def startExecution(driverClass, qDone, scaleParameters, args, config):
 
     pool.join()
     
-    total_results = results.Results()
+    total_results = results.Results(warmupDuration, warmupQueryIterations)
 
     for asyncr in worker_results:
         asyncr.wait()
         r = asyncr.get()
         assert r != None, "No results object returned!"
         if type(r) == int and r == -1: sys.exit(1)
+        total_results.warmupDuration = r.warmupDuration
+        total_results.warmupQUeryIterations = r.warmupQueryIterations
         total_results.append(r)
     ## FOR
 
@@ -170,7 +172,7 @@ def startExecution(driverClass, qDone, scaleParameters, args, config):
 ## ==============================================
 ## executorFunc
 ## ==============================================
-def executorFunc(clientId, TAFlag, driverClass, qDone, numAClients, scaleParameters, args, config, debug):
+def executorFunc(clientId, TAFlag, driverClass, qDone, warmupDurationQ, warmupDuration, warmupQueryIterations, numAClients, scaleParameters, args, config, debug):
     driver = driverClass(args['ddl'], clientId, TAFlag)
     assert driver != None
     logging.debug("Starting client execution: %s" % driver)
@@ -178,11 +180,11 @@ def executorFunc(clientId, TAFlag, driverClass, qDone, numAClients, scaleParamet
     config['execute'] = True
     config['reset'] = False
     driver.loadConfig(config)
-    e = executor.Executor(clientId, driver, qDone, scaleParameters, TAFlag, stop_on_error=args['stop_on_error'])
+    e = executor.Executor(clientId, driver, qDone, warmupDurationQ, scaleParameters, TAFlag, warmupDuration, warmupQueryIterations, stop_on_error=args['stop_on_error'])
     driver.executeStart()
-    results = e.execute(args['duration'], args['query_iterations'], numAClients)
+    results = e.execute(args['duration'], args['query_iterations'], warmupDuration, warmupQueryIterations, numAClients)
     driver.executeFinish()
-    
+
     return results
 ## DEF
 
@@ -213,14 +215,18 @@ if __name__ == '__main__':
                          help='Number of Warehouses')
     aparser.add_argument('--duration', type=int, metavar='D',
                          help='How long to run the benchmark in seconds')
+    aparser.add_argument('--warmup-duration', type=int, metavar='D',
+                         help='Warm up duration of the benchmark in seconds')
     aparser.add_argument('--query-iterations', type=int, metavar='I',
                          help='How many iterations of the queries to run')
+    aparser.add_argument('--warmup-query-iterations', type=int, metavar='I',
+                         help='Number of warmup iterations of the queries to run')
     aparser.add_argument('--ddl', default=os.path.realpath(os.path.join(os.path.dirname(__file__), "tpcc.sql")),
                          help='Path to the TPC-C DDL SQL file')
     aparser.add_argument('--tclients', default=0, type=int, metavar='N',
-                         help='The number of blocking clients to fork')
+                         help='The number of blocking transaction clients to fork')
     aparser.add_argument('--aclients', default=0, type=int, metavar='N',
-                         help='The number of blocking clients to fork')
+                         help='The number of blocking analytics clients to fork')
     aparser.add_argument('--stop-on-error', action='store_true',
                          help='Stop the transaction execution when the driver throws an exception.')
     aparser.add_argument('--no-load', action='store_true',
@@ -278,7 +284,8 @@ if __name__ == '__main__':
     numClients = numTClients + numAClients
     duration = args['duration']
     queryIterations = args['query_iterations']
-    
+    warmupDuration = args['warmup_duration']
+    warmupQueryIterations = args['warmup_query_iterations']
     if (numClients == 0):
         logging.info("No clients specified")
         sys.exit(0)
@@ -300,6 +307,34 @@ if __name__ == '__main__':
     if ((duration != None and duration <= 0) or (queryIterations != None and queryIterations <= 0)):
         logging.info("Need a positive non-zero duration/query-iterations parameter to run")
         sys.exit(0)
+
+    if ((warmupDuration != None and warmupDuration <= 0) or (warmupQueryIterations != None and warmupQueryIterations <= 0)):
+        logging.info("Need a positive non-zero warmup duration/query-iterations parameter to run")
+        sys.exit(0)
+
+    if (warmupDuration != None and warmupQueryIterations != None):
+        logging.info("Cannot specify both warmup duration and warmup query-iterations parameter to run")
+        sys.exit(0)
+
+    if (duration == None and warmupDuration != None):
+        logging.info("Cannot specify warmup duration without specifying a total benchmark duration")
+        sys.exit(0)
+
+    if (queryIterations == None and warmupQueryIterations != None):
+        logging.info("Cannot specify warmup query iterations without specifying number of total query iterations")
+        sys.exit(0)
+
+    if (duration != None and warmupDuration != None and duration < warmupDuration):
+        logging.info("Total duration cannot be less than warmup duration!")
+        sys.exit(0)
+
+    if (queryIterations != None and warmupQueryIterations != None and queryIterations < warmupQueryIterations):
+        logging.info("Total number of query iterations cannot be less than the number of warmup query iterations")
+        sys.exit(0)
+
+    if (warmupDuration == None and warmupQueryIterations == None):
+        warmupDuration = 0
+        warmupQueryIterations = 0
         
     ## Create a handle to the target client driver
     driverClass = createDriverClass(args['system'])
@@ -364,17 +399,18 @@ if __name__ == '__main__':
     if not args['no_execute']:
         m = multiprocessing.Manager()
         qDone = m.Queue()
+        warmupDurationQ = m.Queue()
         if numClients == 1:
             if numTClients == 1:
                 TAFlag = "T"
             else:
                 TAFlag = "A"
-            e = executor.Executor(0, driver, qDone, scaleParameters, TAFlag, stop_on_error=args['stop_on_error'])
+            e = executor.Executor(0, driver, qDone, warmupDurationQ, scaleParameters, TAFlag, warmupDuration, warmupQueryIterations, stop_on_error=args['stop_on_error'])
             driver.executeStart()
-            results = e.execute(duration, queryIterations, numAClients)
+            results = e.execute(duration, queryIterations, warmupDuration, warmupQueryIterations, numAClients)
             driver.executeFinish()
         else:
-            results = startExecution(driverClass, qDone, scaleParameters, args, config)
+            results = startExecution(driverClass, qDone, warmupDurationQ, warmupDuration, warmupQueryIterations, scaleParameters, args, config)
             print('Execution Completed')
         assert results
         print (results.show(duration, queryIterations, numClients, numAClients, load_time))
