@@ -181,70 +181,70 @@ ALL_TABLES = [
 ]
 
 NATIONS = [
-	[48, "Algeria", 0],
-	[49, "Argentina", 1],
-	[50, "Brazil", 1],
-	[51, "Canada", 1],
-	[52, "Egypt", 4],
-	[53, "Ethiopia", 0],
-	[54, "France", 3],
-	[55, "Germany", 3],
-	[56, "India", 2],
-	[57, "Indonesia", 2],
+    [48, "Algeria", 0],
+    [49, "Argentina", 1],
+    [50, "Brazil", 1],
+    [51, "Canada", 1],
+    [52, "Egypt", 4],
+    [53, "Ethiopia", 0],
+    [54, "France", 3],
+    [55, "Germany", 3],
+    [56, "India", 2],
+    [57, "Indonesia", 2],
 
-	[65, "Iran", 4],
-	[66, "Iraq", 4],
-	[67, "Japan", 2],
-	[68, "Jordan", 4],
-	[69, "Kenya", 0],
-	[70, "Morocco", 0],
-	[71, "Mozambique", 0],
-	[72, "Peru", 1],
-	[73, "China", 2],
-	[74, "Kuwait", 4],
-	[75, "Saudi Arabia", 4],
-	[76, "Vietnam", 2],
-	[77, "Russia", 3],
-	[78, "United Kingdom", 3],
-	[79, "United States", 1],
-	[80, "Lebanon", 4],
-	[81, "Oman", 4],
-	[82, "Qatar", 4],
-	[83, "Mexico", 1],
-	[84, "Turkey", 4],
-	[85, "Chile", 1],
-	[86, "Italy", 3],
-	[87, "South Africa", 0],
-	[88, "South Korea", 2],
-	[89, "Colombia", 1],
-	[90, "Spain", 3],
+    [65, "Iran", 4],
+    [66, "Iraq", 4],
+    [67, "Japan", 2],
+    [68, "Jordan", 4],
+    [69, "Kenya", 0],
+    [70, "Morocco", 0],
+    [71, "Mozambique", 0],
+    [72, "Peru", 1],
+    [73, "China", 2],
+    [74, "Kuwait", 4],
+    [75, "Saudi Arabia", 4],
+    [76, "Vietnam", 2],
+    [77, "Russia", 3],
+    [78, "United Kingdom", 3],
+    [79, "United States", 1],
+    [80, "Lebanon", 4],
+    [81, "Oman", 4],
+    [82, "Qatar", 4],
+    [83, "Mexico", 1],
+    [84, "Turkey", 4],
+    [85, "Chile", 1],
+    [86, "Italy", 3],
+    [87, "South Africa", 0],
+    [88, "South Korea", 2],
+    [89, "Colombia", 1],
+    [90, "Spain", 3],
 
-	[97, "Ukraine", 3],
-	[98, "Ecuador", 1],
-	[99, "Sudan", 0],
-	[100, "Uzbekistan", 2],
-	[101, "Malaysia", 2],
-	[102, "Venezuela", 1],
-	[103, "Tanzania", 0],
-	[104, "Afghanistan", 2],
-	[105, "North Korea", 2],
-	[106, "Taiwan", 2],
-	[107, "Ghana", 0],
-	[108, "Ivory Coast", 0],
-	[109, "Syria", 4],
-	[110, "Madagascar", 0],
-	[111, "Cameroon", 0],
-	[112, "Nigeria", 0],
-	[113, "Bolivia", 1],
-	[114, "Netherlands", 3],
-	[115, "Cambodia", 2],
-	[116, "Belgium", 3],
-	[117, "Greece", 3],
-	[118, "Uruguay", 1],
-	[119, "Israel", 4],
-	[120, "Finland", 3],
-	[121, "Singapore", 2],
-	[122, "Norway", 3]
+    [97, "Ukraine", 3],
+    [98, "Ecuador", 1],
+    [99, "Sudan", 0],
+    [100, "Uzbekistan", 2],
+    [101, "Malaysia", 2],
+    [102, "Venezuela", 1],
+    [103, "Tanzania", 0],
+    [104, "Afghanistan", 2],
+    [105, "North Korea", 2],
+    [106, "Taiwan", 2],
+    [107, "Ghana", 0],
+    [108, "Ivory Coast", 0],
+    [109, "Syria", 4],
+    [110, "Madagascar", 0],
+    [111, "Cameroon", 0],
+    [112, "Nigeria", 0],
+    [113, "Bolivia", 1],
+    [114, "Netherlands", 3],
+    [115, "Cambodia", 2],
+    [116, "Belgium", 3],
+    [117, "Greece", 3],
+    [118, "Uruguay", 1],
+    [119, "Israel", 4],
+    [120, "Finland", 3],
+    [121, "Singapore", 2],
+    [122, "Norway", 3]
 ]
 
 REGIONS = ["Africa", "America", "Asia", "Europe", "Middle East"]
@@ -274,10 +274,10 @@ CH2_QUERIES = {
                    "AVG(ol.ol_amount) as avg_amount ,"\
                    "COUNT(*) as COUNT_order "\
            "FROM     orders o, o.o_orderline ol "\
-           "WHERE ol.ol_delivery_d > '2014-07-01 00:00:00' "\
+           "WHERE ol.ol_delivery_d /*+ skip-index */ > '2014-07-01 00:00:00' "\
            "GROUP BY ol.ol_number "\
            "ORDER BY ol.ol_number",
-    
+
     "Q02": "SELECT su.su_suppkey, su.su_name, n.n_name, i.i_id, i.i_name, su.su_address, su.su_phone, su.su_comment "\
             "FROM (SELECT s1.s_i_id as m_i_id, MIN(s1.s_quantity) as m_s_quantity "\
                    "FROM stock s1, "\
@@ -296,19 +296,19 @@ CH2_QUERIES = {
                "AND i.i_id=m.m_i_id "\
                "AND s.s_quantity = m.m_s_quantity "\
               "ORDER BY n.n_name, su.su_name, i.i_id limit 100",
-    
+
     "Q03": "WITH co as "\
            "(SELECT o.o_id, o.o_w_id, o.o_d_id, o.o_entry_d, o.o_orderline "\
             "FROM orders o, customer c "\
             "WHERE  c.c_state LIKE 'A%' "\
               "AND c.c_id = o.o_c_id AND c.c_w_id = o.o_w_id AND c.c_d_id = o.o_d_id "\
-              "AND o.o_entry_d < '2017-03-15 00:00:00.000000') "\
+              "AND o.o_entry_d /*+ skip-index */ < '2017-03-15 00:00:00.000000') "\
            "SELECT co.o_id, co.o_w_id, co.o_d_id, SUM(ol.ol_amount) as revenue, co.o_entry_d "\
            "FROM   co, co.o_orderline ol, neworder no "\
            "WHERE no.no_w_id = co.o_w_id AND no.no_d_id = co.o_d_id AND no.no_o_id = co.o_id "\
            "GROUP BY co.o_id, co.o_w_id, co.o_d_id, co.o_entry_d "\
            "ORDER BY revenue DESC, co.o_entry_d",
-    
+
     "Q04": "SELECT o.o_ol_cnt, COUNT(*) as order_COUNT "\
            "FROM   orders o "\
            "WHERE  o.o_entry_d >= '2015-07-01 00:00:00.000000' AND o.o_entry_d < '2015-10-01 00:00:00.000000' "\
@@ -317,7 +317,7 @@ CH2_QUERIES = {
                         "WHERE ol.ol_delivery_d >= date_add_str(o.o_entry_d, 1, 'week')) "\
            "GROUP BY o.o_ol_cnt "\
            "ORDER BY o.o_ol_cnt ",
-    
+
     "Q05": "SELECT cnros.n_name, ROUND(sum (cnros.ol_amount),2) as revenue "\
            "FROM (SELECT cnro.ol_amount, cnro.n_name, cnro.n_nationkey, s.s_w_id, s.s_i_id "\
                  "FROM stock s JOIN "\
@@ -335,13 +335,13 @@ CH2_QUERIES = {
                        "ON cnros.s_w_id * cnros.s_i_id MOD 10000 = su.su_suppkey AND su.su_nationkey = cnros.n_nationkey "\
            "GROUP BY cnros.n_name "\
            "ORDER BY revenue DESC",
-    
+
     "Q06": "SELECT SUM(ol.ol_amount) as revenue "\
            "FROM   orders o, o.o_orderline ol "\
            "WHERE  ol.ol_delivery_d >= '2016-01-01 00:00:00.000000' "\
              "AND  ol.ol_delivery_d < '2017-01-01 00:00:00.000000' "\
              "AND  ol.ol_amount > 600",
-    
+
     "Q07": "SELECT su.su_nationkey as supp_nation, SUBSTR1(n1n2cools.c_state,1,1) as cust_nation, DATE_PART_STR(n1n2cools.o_entry_d, 'year') as l_year, ROUND(SUM(n1n2cools.ol_amount),2) as revenue "\
            "FROM "\
            "(select n1n2cool.c_state, n1n2cool.o_entry_d, n1n2cool.ol_amount, n1n2cool.n1key, s.s_w_id, s.s_i_id "\
@@ -361,7 +361,7 @@ CH2_QUERIES = {
            "ON n1n2cools.s_w_id * n1n2cools.s_i_id MOD 10000 = su.su_suppkey AND su.su_nationkey = n1n2cools.n1key "\
            "GROUP BY su.su_nationkey, SUBSTR1(n1n2cools.c_state,1,1), DATE_PART_STR(n1n2cools.o_entry_d, 'year') "\
            "ORDER BY su.su_nationkey, cust_nation, l_year",
-    
+
     "Q08": "SELECT DATE_PART_STR(rn1coolis.o_entry_d, 'year') as l_year, "\
            "ROUND((SUM(case when sun2.n_name = 'Germany' then rn1coolis.ol_amount else 0 end) / SUM(rn1coolis.ol_amount)),2) as mkt_share "\
            "FROM "\
@@ -378,7 +378,7 @@ CH2_QUERIES = {
                      "ON cnr.c_id = o.o_c_id AND cnr.c_w_id = o.o_w_id AND cnr.c_d_id = o.o_d_id "\
                      "AND i.i_data LIKE '%b' AND i.i_id = ol.ol_i_id "\
                      "AND ol.ol_i_id < 1000 "\
-                     "AND o.o_entry_d BETWEEN '2017-01-01 00:00:00.000000' AND '2018-12-31 00:00:00.000000') rn1cooli "\
+                     "AND o.o_entry_d /*+ skip-index */ BETWEEN '2017-01-01 00:00:00.000000' AND '2018-12-31 00:00:00.000000') rn1cooli "\
                 "ON rn1cooli.ol_i_id = s.s_i_id "\
                 "AND rn1cooli.ol_supply_w_id = s.s_w_id) rn1coolis JOIN "\
               "(SELECT su.su_suppkey, n2.n_name "\
@@ -387,7 +387,7 @@ CH2_QUERIES = {
              "ON rn1coolis.s_w_id * rn1coolis.s_i_id MOD 10000 = sun2.su_suppkey "\
              "GROUP BY DATE_PART_STR(rn1coolis.o_entry_d, 'year') "\
              "ORDER BY l_year",
-    
+
     "Q09": "SELECT sun.n_name, DATE_PART_STR(oolis.o_entry_d, 'year') as l_year, round (SUM(oolis.ol_amount), 2) as SUM_profit "\
            "FROM "\
             "(SELECT s.s_w_id, s.s_i_id, ooli.o_entry_d, ooli.ol_amount "\
@@ -402,7 +402,7 @@ CH2_QUERIES = {
              "ON oolis.s_w_id * oolis.s_i_id MOD 10000 = sun.su_suppkey "\
             "GROUP BY sun.n_name, DATE_PART_STR(oolis.o_entry_d, 'year') "\
             "ORDER BY sun.n_name, l_year DESC",
-    
+
     "Q10": "SELECT c.c_id, c.c_last, SUM(ol.ol_amount) as revenue, c.c_city, c.c_phone, n.n_name "\
            "FROM nation n, customer c, orders o, o.o_orderline ol "\
            "WHERE  c.c_id = o.o_c_id "\
@@ -414,7 +414,7 @@ CH2_QUERIES = {
             "GROUP BY c.c_id, c.c_last, c.c_city, c.c_phone, n.n_name "\
             "ORDER BY revenue DESC "\
             "LIMIT 20",
-    
+
     "Q11": "SELECT s.s_i_id, SUM(s.s_order_cnt) as ordercount "\
            "FROM   nation n, supplier su, stock s "\
            "WHERE  s.s_w_id * s.s_i_id MOD 10000 = su.su_suppkey "\
@@ -428,7 +428,7 @@ CH2_QUERIES = {
                   "AND su1.su_nationkey = n1.n_nationkey "\
                   "AND n1.n_name = 'Germany')[0] "\
              "ORDER BY ordercount DESC",
-    
+
     "Q12": "SELECT o.o_ol_cnt, "\
                    "SUM (case when o.o_carrier_id = 1 or o.o_carrier_id = 2 "\
                    "THEN 1 ELSE 0 END) AS high_line_COUNT, "\
@@ -439,7 +439,7 @@ CH2_QUERIES = {
              "AND  ol.ol_delivery_d >= '2016-01-01 00:00:00.000000' AND  ol.ol_delivery_d < '2017-01-01 00:00:00.000000' "\
            "GROUP BY o.o_ol_cnt "\
            "ORDER BY o.o_ol_cnt",
-    
+
     "Q13": "SELECT c_orders.c_count, COUNT(*) as custdist "\
            "FROM  (SELECT c.c_id, COUNT(o.o_id) as c_count "\
                    "FROM customer c LEFT OUTER JOIN orders o ON ( "\
@@ -450,14 +450,14 @@ CH2_QUERIES = {
                    "GROUP BY c.c_id) as c_orders "\
             "GROUP BY c_orders.c_count "\
             "ORDER BY custdist DESC, c_orders.c_count DESC",
-    
+
     "Q14": "SELECT 100.00 * SUM(CASE WHEN i.i_data LIKE 'pr%' "\
                                 "THEN ol.ol_amount ELSE 0 END) / "\
                                 "(1+SUM(ol.ol_amount)) AS promo_revenue "\
            "FROM item i, orders o, o.o_orderline ol "\
            "WHERE ol.ol_i_id = i.i_id "\
              "AND ol.ol_delivery_d >= '2017-09-01 00:00:00.000000' AND ol.ol_delivery_d < '2017-10-01 00:00:00.000000'",
-    
+
     "Q15": "WITH revenue AS ( "\
            "SELECT s.s_w_id * s.s_i_id MOD 10000 as supplier_no, SUM(ol.ol_amount) AS total_revenue "\
            "FROM   stock s, orders o, o.o_orderline ol "\
@@ -470,7 +470,7 @@ CH2_QUERIES = {
            "WHERE  su.su_suppkey = r.supplier_no "\
              "AND  r.total_revenue = (SELECT VALUE max(r1.total_revenue) FROM revenue r1)[0] "\
            "ORDER BY su.su_suppkey",
-    
+
     "Q16": "SELECT i.i_name, SUBSTR1(i.i_data, 1, 3) AS brand, i.i_price, "\
            "COUNT(DISTINCT (s.s_w_id * s.s_i_id MOD 10000)) AS supplier_cnt "\
            "FROM stock s, item i "\
@@ -482,7 +482,7 @@ CH2_QUERIES = {
                         "WHERE su.su_comment LIKE '%Customer%Complaints%')) "\
             "GROUP BY i.i_name, SUBSTR1(i.i_data, 1, 3), i.i_price "\
             "ORDER BY supplier_cnt DESC",
-    
+
     "Q17": "SELECT SUM(ol.ol_amount) / 2.0 AS AVG_yearly "\
            "FROM  (SELECT i.i_id, AVG(ol1.ol_quantity) AS a "\
                   "FROM   item i, orders o1, o1.o_orderline ol1 "\
@@ -491,7 +491,7 @@ CH2_QUERIES = {
                   "GROUP BY i.i_id) t, orders o, o.o_orderline ol "\
            "WHERE ol.ol_i_id = t.i_id "\
              "AND ol.ol_quantity < t.a",
-    
+
     "Q18": "SELECT c.c_last, c.c_id o_id, o.o_entry_d, o.o_ol_cnt, SUM(ol.ol_amount) "\
            "FROM orders o, o.o_orderline ol, customer c "\
            "WHERE  c.c_id = o.o_c_id AND  c.c_w_id = o.o_w_id AND  c.c_d_id = o.o_d_id "\
@@ -499,7 +499,7 @@ CH2_QUERIES = {
            "HAVING SUM(ol.ol_amount) > 200 "\
            "ORDER BY SUM(ol.ol_amount) DESC, o.o_entry_d "\
            "LIMIT 100",
-    
+
     "Q19": "SELECT SUM(ol.ol_amount) AS revenue "\
            "FROM orders o, o.o_orderline ol, item i "\
            "WHERE  (( "\
@@ -520,7 +520,7 @@ CH2_QUERIES = {
                  ")) "\
               "AND ol.ol_i_id = i.i_id "\
               "AND i.i_price between 1 AND 15",
-    
+
     "Q20": "SELECT su.su_name, su.su_address "\
            "FROM   supplier su, nation n "\
            "WHERE  su.su_suppkey IN "\
@@ -538,7 +538,7 @@ CH2_QUERIES = {
              "AND su.su_nationkey = n.n_nationkey "\
              "AND n.n_name = 'Germany'  "\
              "ORDER BY su.su_name",
-    
+
     "Q21": "SELECT z.su_name, count (*) AS numwait "\
            "FROM (SELECT x.su_name "\
                   "FROM (SELECT o1.o_id, o1.o_w_id, o1.o_d_id, ol1.ol_delivery_d,  "\
@@ -561,7 +561,7 @@ CH2_QUERIES = {
                   "HAVING COUNT (y.o_id) = 0) z "\
            "GROUP BY z.su_name "\
            "LIMIT 100",
-    
+
     "Q22": "SELECT SUBSTR1(c.c_state,1,1) AS country, COUNT(*) AS numcust, SUM(c.c_balance) AS totacctbal "\
            "FROM customer c "\
            "WHERE SUBSTR1(c.c_phone,1,1) IN ['1','2','3','4','5','6','7'] "\
