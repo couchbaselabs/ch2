@@ -177,7 +177,7 @@ class Results:
                 continue
             txn_time = self.txn_times[txn]
             txn_cnt = self.txn_counters[txn]
-            txn_rate = u"%.02f txn/s" % ((txn_cnt / res_duration))
+            txn_rate = u" %.02f txn/s" % ((txn_cnt / res_duration))
             #avg_latency = u"%.03f sec" % ((txn_cnt / txn_time))
             ret += f % (txn, str(txn_cnt), str(round(txn_time * 1000000,3)), txn_rate)
             total_txn_time += txn_time
@@ -193,7 +193,7 @@ class Results:
                 ret += k + ":"+ str(self.txn_status[txn][k])
             ret += ")"
         ret += "\n" + ("-"*total_width)
-        total_rate = "%.02f txn/s" % ((total_txn_cnt / res_duration))
+        total_rate = " %.02f txn/s" % ((total_txn_cnt / res_duration))
         ret += f % ("TOTAL", str(total_txn_cnt), str(round(total_txn_time * 1000000,3)), total_rate)
 
 
