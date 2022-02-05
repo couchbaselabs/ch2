@@ -151,6 +151,16 @@ MAX_PAYMENT = 5000.0
 #  Indicates "brand" items and stock in i_data and s_data.
 ORIGINAL_STRING = "ORIGINAL"
 
+CH2_BUCKET = "bench"
+CH2_SCOPE = "ch2"
+
+CH2_DRIVER_LOAD_MODE = {
+    "NOT_SET":-1,
+    "DATASVC_BULKLOAD":0,
+    "DATASVC_LOAD":1,
+    "QRYSVC_LOAD":2
+}
+
 # Table Names
 TABLENAME_ITEM       = "default:bench.ch2.item"
 TABLENAME_WAREHOUSE  = "default:bench.ch2.warehouse"
@@ -165,6 +175,20 @@ TABLENAME_SUPPLIER   = "default:bench.ch2.supplier"
 TABLENAME_NATION     = "default:bench.ch2.nation"
 TABLENAME_REGION     = "default:bench.ch2.region"
 
+COLLECTIONS_DICT = {
+    TABLENAME_ITEM:"item",
+    TABLENAME_WAREHOUSE:"warehouse",
+    TABLENAME_DISTRICT:"district",
+    TABLENAME_CUSTOMER:"customer",
+    TABLENAME_STOCK:"stock",
+    TABLENAME_ORDERS:"orders",
+    TABLENAME_NEWORDER:"neworder",
+    TABLENAME_ORDERLINE:"orderline",
+    TABLENAME_HISTORY:"history",
+    TABLENAME_SUPPLIER:"supplier",
+    TABLENAME_NATION:"nation",
+    TABLENAME_REGION:"region"}
+
 ALL_TABLES = [
     TABLENAME_ITEM,
     TABLENAME_WAREHOUSE,
@@ -177,7 +201,7 @@ ALL_TABLES = [
     TABLENAME_HISTORY,
     TABLENAME_SUPPLIER,
     TABLENAME_NATION,
-    TABLENAME_REGION,
+    TABLENAME_REGION
 ]
 
 NATIONS = [

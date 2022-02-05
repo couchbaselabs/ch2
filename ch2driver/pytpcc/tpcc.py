@@ -33,7 +33,7 @@ import logging
 import re
 import argparse
 import glob
-import time 
+import time
 import multiprocessing
 from configparser import SafeConfigParser
 from pprint import pprint,pformat
@@ -47,7 +47,7 @@ logging.basicConfig(level = logging.INFO,
                     format="%(asctime)s [%(funcName)s:%(lineno)03d] %(levelname)-5s: %(message)s",
                     datefmt="%m-%d-%Y %H:%M:%S",
                     stream = sys.stdout)
-                    
+
 ## ==============================================
 ## createDriverClass
 ## ==============================================
@@ -71,12 +71,12 @@ def getDrivers():
 ## ==============================================
 ## startLoading
 ## ==============================================
-def startLoading(driverClass, scaleParameters, args, config):
+def startLoading(driverClass, scaleParameters, args, configi, load_mode):
     numClients = args['tclients'] + args['aclients']
     logging.debug("Creating client pool with %d processes" % numClients)
     pool = multiprocessing.Pool(numClients)
     debug = logging.getLogger().isEnabledFor(logging.DEBUG)
-    
+
     # Split the warehouses into chunks
     w_ids = list(map(lambda x: [ ], range(numClients)))
     for w_id in range(scaleParameters.starting_warehouse, scaleParameters.ending_warehouse+1):
@@ -86,10 +86,10 @@ def startLoading(driverClass, scaleParameters, args, config):
 
     loader_results = [ ]
     for i in range(numClients):
-        r = pool.apply_async(loaderFunc, (i, driverClass, scaleParameters, args, config, w_ids[i], True))
+        r = pool.apply_async(loaderFunc, (i, driverClass, scaleParameters, args, config, w_ids[i], load_mode, True))
         loader_results.append(r)
     ## FOR
-    
+
     pool.close()
     logging.debug("Waiting for %d loaders to finish" % numClients)
     pool.join()
@@ -98,16 +98,16 @@ def startLoading(driverClass, scaleParameters, args, config):
 ## ==============================================
 ## loaderFunc
 ## ==============================================
-def loaderFunc(clientId, driverClass, scaleParameters, args, config, w_ids, debug):
-    driver = driverClass(args['ddl'], clientId, "L")
+def loaderFunc(clientId, driverClass, scaleParameters, args, config, w_ids, load_mode, debug):
+    driver = driverClass(args['ddl'], clientId, "L", load_mode)
     assert driver != None
     logging.debug("Starting client execution: %s [warehouses=%d]" % (driver, len(w_ids)))
-    
+
     config['load'] = True
     config['execute'] = False
     config['reset'] = False
     driver.loadConfig(config)
-   
+
     try:
         loadItems = (1 in w_ids)
         l = loader.Loader(driver, scaleParameters, w_ids, loadItems)
@@ -120,7 +120,7 @@ def loaderFunc(clientId, driverClass, scaleParameters, args, config, w_ids, debu
         logging.warning("Failed to load data: %s" % (ex))
         traceback.print_exc(file=sys.stdout)
         raise
-        
+
 ## DEF
 
 ## ==============================================
@@ -134,7 +134,7 @@ def startExecution(driverClass, qDone, warmupDurationQ, warmupDuration, warmupQu
 
     pool = multiprocessing.Pool(numClients)
     debug = logging.getLogger().isEnabledFor(logging.DEBUG)
-    
+
     worker_results = [ ]
     for i in range(numClients):
         #random_num = randint(1, 20)
@@ -153,7 +153,7 @@ def startExecution(driverClass, qDone, warmupDurationQ, warmupDuration, warmupQu
     pool.close()
 
     pool.join()
-    
+
     total_results = results.Results(warmupDuration, warmupQueryIterations)
 
     for asyncr in worker_results:
@@ -162,7 +162,7 @@ def startExecution(driverClass, qDone, warmupDurationQ, warmupDuration, warmupQu
         assert r != None, "No results object returned!"
         if type(r) == int and r == -1: sys.exit(1)
         total_results.warmupDuration = r.warmupDuration
-        total_results.warmupQUeryIterations = r.warmupQueryIterations
+        total_results.warmupQueryIterations = r.warmupQueryIterations
         total_results.append(r)
     ## FOR
 
@@ -176,7 +176,7 @@ def executorFunc(clientId, TAFlag, driverClass, qDone, warmupDurationQ, warmupDu
     driver = driverClass(args['ddl'], clientId, TAFlag)
     assert driver != None
     logging.debug("Starting client execution: %s" % driver)
-    
+
     config['execute'] = True
     config['reset'] = False
     driver.loadConfig(config)
@@ -203,6 +203,9 @@ if __name__ == '__main__':
                          help='query-url <ip>:port', default = "127.0.0.1:8093")
     aparser.add_argument('--multi-query-url',
                          help = 'multi-query-url <ip>:port', default = "127.0.0.1:8093")
+    aparser.add_argument('--data-url',
+                         help='data-url <ip>', default = "127.0.0.1")
+    aparser.add_argument('--multi-data-url', help = 'multi-data-url <ip>', default = "127.0.0.1")
     aparser.add_argument('--analytics-url',
                          help='analytics-url <ip>:port', default = "127.0.0.1:8095")
     aparser.add_argument('--config', type=argparse.FileType('r'),
@@ -233,6 +236,12 @@ if __name__ == '__main__':
                          help='Disable loading the data')
     aparser.add_argument('--no-execute', action='store_true',
                          help='Disable executing the workload')
+    aparser.add_argument('--datasvc-bulkload', action='store_true',
+                         help='Enable bulk loading the data through the data service')
+    aparser.add_argument('--datasvc-load', action='store_true',
+                         help='Enable loading the data through the data service')
+    aparser.add_argument('--qrysvc-load', action='store_true',
+                         help='Enable loading the data through the query service')
     aparser.add_argument('--print-config', action='store_true',
                          help='Print out the default configuration file for the system and exit')
     aparser.add_argument('--debug', action='store_true',
@@ -249,16 +258,25 @@ if __name__ == '__main__':
     print (args)
     if args['debug']: logging.getLogger().setLevel(logging.DEBUG)
     query_url = "127.0.0.1:8093"
-    analytics_url = "127.0.0.1:8095"    
+    multi_query_url = "127.0.0.1:8093"
+    data_url = "127.0.0.1"
+    multi_data_url = "127.0.0.1"
+    analytics_url = "127.0.0.1:8095"
     userid = "Administrator"
     password = "password"
-    multi_query_url = "127.0.0.1:8093"
+
     if args['query_url']:
         query_url = args['query_url']
     os.environ["QUERY_URL"] = query_url
     if args['multi_query_url']:
         multi_query_url = args['multi_query_url']
-        os.environ["MULTI_QUERY_URL"] = multi_query_url
+    os.environ["MULTI_QUERY_URL"] = multi_query_url
+    if args['data_url']:
+        data_url = args['data_url']
+    os.environ["DATA_URL"] = data_url
+    if args['multi_data_url']:
+        multi_data_url = args['multi_data_url']
+    os.environ["MULTI_DATA_URL"] = multi_data_url
     if args['analytics_url']:
         analytics_url = args['analytics_url']
     os.environ["ANALYTICS_URL"] = analytics_url
@@ -278,6 +296,29 @@ if __name__ == '__main__':
     if args['run_date']:
         run_date = args['run_date']
         os.environ["RUN_DATE"] = str(run_date)
+    load_mode = constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]
+    if args['datasvc_bulkload']:
+        if load_mode == constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]:
+            load_mode = constants.CH2_DRIVER_LOAD_MODE["DATASVC_BULKLOAD"]
+        else:
+            logging.info("Cannot specify multiple types of load")
+            sys.exit(0)
+    if args['datasvc_load']:
+        if load_mode == constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]:
+            load_mode = constants.CH2_DRIVER_LOAD_MODE["DATASVC_LOAD"]
+        else:
+            logging.info("Cannot specify multiple types of load")
+            sys.exit(0)
+    if args['qrysvc_load']:
+        if load_mode == constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]:
+            load_mode = constants.CH2_DRIVER_LOAD_MODE["QRYSVC_LOAD"]
+        else:
+            logging.info("Cannot specify multiple types of load")
+            sys.exit(0)
+    if not args['no_load']:
+       if load_mode == constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]:
+            logging.info("Need to specify the type of load")
+            sys.exit(0)
 
     numTClients = args['tclients']
     numAClients = args['aclients']
@@ -335,14 +376,14 @@ if __name__ == '__main__':
     if (warmupDuration == None and warmupQueryIterations == None):
         warmupDuration = 0
         warmupQueryIterations = 0
-        
+
     ## Create a handle to the target client driver
     driverClass = createDriverClass(args['system'])
     assert driverClass != None, "Failed to find '%s' class" % args['system']
     val = -1
     if args['no_execute']:
          val = 0
-         driver = driverClass(args['ddl'], val, "L")
+         driver = driverClass(args['ddl'], val, "L", load_mode)
     else:
         TAFlag = "T"
         if numClients == 1:
@@ -378,7 +419,7 @@ if __name__ == '__main__':
     scaleParameters = scaleparameters.makeWithScaleFactor(args['warehouses'], args['scalefactor'])
     rand.setNURand(nurand.makeForLoad())
     if args['debug']: logging.debug("Scale Parameters:\n%s" % scaleParameters)
-    
+
     ## DATA LOADER!!!
     numClients = numTClients + numAClients
     load_time = None
@@ -391,10 +432,10 @@ if __name__ == '__main__':
             l.execute()
             driver.loadFinish()
         else:
-            startLoading(driverClass, scaleParameters, args, config)
+            startLoading(driverClass, scaleParameters, args, config, load_mode)
         load_time = time.time() - load_start
     ## IF
-    
+
     ## WORKLOAD DRIVER!!!
     if not args['no_execute']:
         m = multiprocessing.Manager()
@@ -415,5 +456,5 @@ if __name__ == '__main__':
         assert results
         print (results.show(duration, queryIterations, numClients, numAClients, load_time))
     ## IF
-    
+
 ## MAIN

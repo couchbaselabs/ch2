@@ -47,7 +47,16 @@ from .abstractdriver import *
 import random
 import time
 
+import sys
+import couchbase.collection
+from couchbase.cluster import Cluster, ClusterOptions
+from couchbase_core.cluster import PasswordAuthenticator
+
 QUERY_URL = "127.0.0.1:8093"
+DATA_URL = "127.0.0.1"
+ANALYTICS_URL = "127.0.0.1:8095"
+BYTES_PER_BATCH = 1024 * 256 # 256K
+
 USER_ID = "Administrator"
 PASSWORD = "password"
 TXN_QUERIES = {
@@ -78,7 +87,7 @@ TXN_QUERIES = {
         "getItemInfo": "SELECT i_price, i_name, i_data FROM default:bench.ch2.item USE KEYS [to_string($1)]", # ol_i_id
         "getStockInfo": "SELECT s_quantity, s_data, s_ytd, s_order_cnt, s_remote_cnt, s_dist_%02d FROM default:bench.ch2.stock USE KEYS [TO_STRING($2)|| '.' || TO_STRING($1)]", # d_id, ol_i_id, ol_supply_w_id
         "updateStock": "UPDATE default:bench.ch2.stock USE KEYS [to_string($6) || '.' || to_string($5)] SET s_quantity = $1, s_ytd = $2, s_order_cnt = $3, s_remote_cnt = $4 ", # s_quantity, s_order_cnt, s_remote_cnt, ol_i_id, ol_supply_w_id
-#        "createOrderLine": "INSERT INTO default:bench.ch2.ORDER_LINE(KEY, VALUE) VALUES(TO_STRING($3)|| '.' || TO_STRING($2)|| '.' || TO_STRING($1)|| '.' || TO_STRING($4), { \\\"OL_O_ID\\\":$1, \\\"OL_D_ID\\\":$2, \\\"OL_W_ID\\\":$3, \\\"OL_NUMBER\\\":$4, \\\"OL_I_ID\\\":$5, \\\"OL_SUPPLY_W_ID\\\":$6, \\\"OL_DELIVERY_D\\\":$7, \\\"OL_QUANTITY\\\":$8, \\\"OL_AMOUNT\\\":$9, \\\"OL_DIST_INFO\\\":$10})" # o_id, d_id, w_id, ol_number, ol_i_id, ol_supply_w_id, ol_quantity, ol_amount, ol_dist_info        
+#       "createOrderLine": "INSERT INTO default:bench.ch2.ORDER_LINE(KEY, VALUE) VALUES(TO_STRING($3)|| '.' || TO_STRING($2)|| '.' || TO_STRING($1)|| '.' || TO_STRING($4), { \\\"OL_O_ID\\\":$1, \\\"OL_D_ID\\\":$2, \\\"OL_W_ID\\\":$3, \\\"OL_NUMBER\\\":$4, \\\"OL_I_ID\\\":$5, \\\"OL_SUPPLY_W_ID\\\":$6, \\\"OL_DELIVERY_D\\\":$7, \\\"OL_QUANTITY\\\":$8, \\\"OL_AMOUNT\\\":$9, \\\"OL_DIST_INFO\\\":$10})" # o_id, d_id, w_id, ol_number, ol_i_id, ol_supply_w_id, ol_quantity, ol_amount, ol_dist_info
         "createOrderLine": "UPSERT INTO default:bench.ch2.orders(KEY, VALUE) VALUES(TO_STRING($3)|| '.' || TO_STRING($2)|| '.' || TO_STRING($1), { \\\"o_id\\\":$1, \\\"o_d_id\\\":$2, \\\"o_w_id\\\":$3, \\\"o_orderline\\\": [{\\\"ol_number\\\":$4, \\\"ol_i_id\\\":$5, \\\"ol_supply_w_id\\\":$6, \\\"ol_delivery_d\\\":$7, \\\"ol_quantity\\\":$8, \\\"ol_amount\\\":$9, \\\"ol_dist_info\\\":$10}]})"
     },
     
@@ -89,10 +98,10 @@ TXN_QUERIES = {
         "getCustomerByCustomerId": "SELECT c_id, c_first, c_middle, c_last, c_balance FROM default:bench.ch2.customer USE KEYS [(to_string($1) || '.' ||  to_string($2) || '.' ||  to_string($3)) ]", # w_id, d_id, c_id
         "getCustomersByLastName": "SELECT c_id, c_first, c_middle, c_last, c_balance FROM default:bench.ch2.customer WHERE c_w_id = $1 AND c_d_id = $2 AND c_last = $3 ORDER BY c_first", # w_id, d_id, c_last
         "getLastOrder": "SELECT o_id, o_carrier_id, o_entry_d FROM default:bench.ch2.orders WHERE o_w_id = $1 AND o_d_id = $2 AND o_c_id = $3 ORDER BY o_id DESC LIMIT 1", # w_id, d_id, c_id
-#        "getOrderLines": "SELECT OL_SUPPLY_W_ID, OL_I_ID, OL_QUANTITY, OL_AMOUNT, OL_DELIVERY_D FROM default:bench.ch2.ORDER_LINE WHERE OL_W_ID = $1 AND OL_D_ID = $2 AND OL_O_ID = $3", # w_id, d_id, o_id        
-        "getOrderLines": "SELECT ol.ol_supply_w_id, ol.ol_i_id, ol.ol_quantity, ol.ol_amount, ol.ol_delivery_d FROM default:bench.ch2.orders o unnest o.o_orderline ol WHERE o.o_w_id = $1 AND o.o_d_id = $2 AND o.o_id = $3", # w_id, d_id, o_id        
+#       "getOrderLines": "SELECT OL_SUPPLY_W_ID, OL_I_ID, OL_QUANTITY, OL_AMOUNT, OL_DELIVERY_D FROM default:bench.ch2.ORDER_LINE WHERE OL_W_ID = $1 AND OL_D_ID = $2 AND OL_O_ID = $3", # w_id, d_id, o_id
+        "getOrderLines": "SELECT ol.ol_supply_w_id, ol.ol_i_id, ol.ol_quantity, ol.ol_amount, ol.ol_delivery_d FROM default:bench.ch2.orders o unnest o.o_orderline ol WHERE o.o_w_id = $1 AND o.o_d_id = $2 AND o.o_id = $3", # w_id, d_id, o_id
     },
-    
+
     "PAYMENT": {
         "beginWork": "BEGIN WORK",
         "rollbackWork":"ROLLBACK WORK",
@@ -107,7 +116,7 @@ TXN_QUERIES = {
         "updateGCCustomer": "UPDATE default:bench.ch2.customer USE KEYS [(to_string($4) || '.' ||  to_string($5) || '.' ||  to_string($6)) ] SET c_balance = $1, c_ytd_payment = $2, c_payment_cnt = $3 ", # c_balance, c_ytd_payment, c_payment_cnt, c_w_id, c_d_id, c_id
         "insertHistory": "INSERT INTO default:bench.ch2.history(KEY, VALUE) VALUES (TO_STRING($6), {\\\"h_c_id\\\":$1, \\\"h_c_d_id\\\":$2, \\\"h_c_w_id\\\":$3, \\\"h_d_id\\\":$4, \\\"h_w_id\\\":$5, \\\"h_date\\\":$6, \\\"h_amount\\\":$7, \\\"h_data\\\":$8})"
     },
-    
+
     "STOCK_LEVEL": {
         "getOId": "SELECT d_next_o_id FROM default:bench.ch2.district WHERE d_w_id = $1 AND d_id = $2",
 #        "getStockCount": " SELECT COUNT(DISTINCT(o.ol_i_id)) AS cnt_ol_i_id FROM  default:bench.ch2.ORDER_LINE o INNER JOIN default:bench.ch2.STOCK s ON KEYS (TO_STRING(o.OL_W_ID) || '.' ||  TO_STRING(o.OL_I_ID)) WHERE o.OL_W_ID = $1 AND o.OL_D_ID = $2 AND o.OL_O_ID < $3 AND o.OL_O_ID >= $4 AND s.S_QUANTITY < $6 "
@@ -118,7 +127,6 @@ TXN_QUERIES = {
     },
 }
 
-ANALYTICS_URL = "127.0.0.1:8095"
 KEYNAMES = {
         constants.TABLENAME_ITEM:         [0],  # INTEGER
         constants.TABLENAME_WAREHOUSE:    [0],  # INTEGER
@@ -129,9 +137,9 @@ KEYNAMES = {
         constants.TABLENAME_NEWORDER:     [2, 1, 0], # INTEGER
         constants.TABLENAME_ORDERLINE:    [2, 1, 0, 3], # INTEGER
         constants.TABLENAME_HISTORY:      [2, 1, 0],  # INTEGER
-    	constants.TABLENAME_SUPPLIER: 	  [0],  # INTEGER
-    	constants.TABLENAME_NATION: 	  [0],  # INTEGER
-	constants.TABLENAME_REGION: 	  [0],  # INTEGER    
+        constants.TABLENAME_SUPPLIER:     [0],  # INTEGER
+        constants.TABLENAME_NATION:       [0],  # INTEGER
+        constants.TABLENAME_REGION:       [0],  # INTEGER
 }
 
 TABLE_COLUMNS = {
@@ -307,16 +315,26 @@ TABLE_INDEXES = {
         "su_suppkey",
     ],
     constants.TABLENAME_NATION:    [
-        "n_nationkey", 
+        "n_nationkey",
     ],
     constants.TABLENAME_REGION:    [
-        "r_regionkey", 
+        "r_regionkey",
     ],
 }
 
 globpool = None
 gcreds = '[{"user":"' + os.environ["USER_ID"] + '","pass":"' + os.environ["PASSWORD"] + '"}]'
 prepared_dict = {}
+
+def pysdk_init(self):
+    pa = PasswordAuthenticator(os.environ["USER_ID"], os.environ["PASSWORD"])
+    str_data_node = str(self.data_node)
+    cluster = Cluster('couchbase://'+ str_data_node, ClusterOptions(pa))
+    bucket = cluster.bucket(constants.CH2_BUCKET)
+    scope = bucket.scope(constants.CH2_SCOPE)
+    self.collections = {}
+    for tableName in constants.ALL_TABLES:
+        self.collections[tableName] = scope.collection(constants.COLLECTIONS_DICT[tableName])
 
 def TxTimeoutFactor(txtimeout, factor):
     tx = float(txtimeout)
@@ -338,7 +356,7 @@ def retvalN1QLQuery(prefix, rj):
              if  rj['errors'][0]['cause']['cause'] == "found existing document: document already exists" :
                   status = "duplicates"
              elif "msg" in rj['errors'][0]['cause']['cause'] and  rj['errors'][0]['cause']['cause']['msg'] == "write write conflict":
-                   status = "wwconflict"  
+                  status = "wwconflict"
              elif ("error_description" in rj['errors'][0]['cause']['cause'])  :
                   status = rj['errors'][0]['cause']['cause']['error_description']
                   if status == "key already exists, or CAS mismatch" :
@@ -469,20 +487,27 @@ class NestcollectionsDriver(AbstractDriver):
         "name":         ("Not Needed for N1QL", "tpcc"),
         "denormalize":  ("If set to true, then the CUSTOMER data will be denormalized into a single document", False),
     }
-    
-    def __init__(self, ddl, clientId, TAFlag="T"):
+
+    def __init__(self, ddl, clientId, TAFlag="T",
+                 load_mode=constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]):
         global globpool
         global prepared_dict
         super(NestcollectionsDriver, self).__init__("nestcollections", ddl)
         QUERY_URL = os.environ["QUERY_URL"]
+        DATA_URL = os.environ["DATA_URL"]
         ANALYTICS_URL = os.environ["ANALYTICS_URL"]
-        self.MULTI_QUERY_LIST = os.environ["MULTI_QUERY_URL"].split(',')
         self.query_node = QUERY_URL
+        self.MULTI_QUERY_LIST = os.environ["MULTI_QUERY_URL"].split(',')
+        self.data_node = DATA_URL
+        self.MULTI_DATA_LIST = os.environ["MULTI_DATA_URL"].split(',')
         self.analytics_node = ANALYTICS_URL
         self.client_id = clientId
         self.TAFlag = TAFlag
+        self.load_mode = load_mode
         if len(self.MULTI_QUERY_LIST) > 1 and clientId >= 0:
             self.query_node = self.MULTI_QUERY_LIST[self.client_id%len(self.MULTI_QUERY_LIST)]
+        if len(self.MULTI_DATA_LIST) > 1 and clientId >= 0:
+            self.data_node = self.MULTI_DATA_LIST[self.client_id%len(self.MULTI_DATA_LIST)]
 
         self.database = None
         self.cursor = None
@@ -492,6 +517,9 @@ class NestcollectionsDriver(AbstractDriver):
         self.stock_txtimeout = TxTimeoutFactor(os.environ["TXTIMEOUT"], 40)
         self.denormalize = False
         self.w_orders = {}
+        if (self.load_mode == constants.CH2_DRIVER_LOAD_MODE["DATASVC_BULKLOAD"] or
+            self.load_mode == constants.CH2_DRIVER_LOAD_MODE["DATASVC_LOAD"]):
+            pysdk_init(self)
         if globpool == None:
             gcreds = '[{"user":"' + os.environ["USER_ID"] + '","pass":"' + os.environ["PASSWORD"] + '"}]'
             globpool = PoolManager(10, retries=urllib3.Retry(10), maxsize=60)
@@ -502,7 +530,7 @@ class NestcollectionsDriver(AbstractDriver):
 
         if TAFlag == "L":
             return
-        
+
         if TAFlag == "T":
             for txn in TXN_QUERIES:
                 for query in TXN_QUERIES[txn]:
@@ -530,12 +558,12 @@ class NestcollectionsDriver(AbstractDriver):
     ## ----------------------------------------------
     def makeDefaultConfig(self):
         return NestcollectionsDriver.DEFAULT_CONFIG
-    
+
     ## ----------------------------------------------
     ## loadConfig
     ## ----------------------------------------------
     def loadConfig(self, config):
-        #No Database creation. 
+        #No Database creation.
         #Connection management is via REST gateway. So, nothing to do here.
         # Add bucket creation here.  For now, simply create manually and load.
         self.database = "tpcc"
@@ -552,12 +580,94 @@ class NestcollectionsDriver(AbstractDriver):
     def loadTuples(self, tableName, tuples):
         if len(tuples) == 0:
             return
+
         logging.debug("Loading %d tuples for tableName %s" % (len(tuples), tableName))
         assert tableName in TABLE_COLUMNS, "Unexpected table %s" % tableName
-        
-        for t in tuples:
-                self.loadOneDoc(tableName, t, False)
+
+        if (self.load_mode == constants.CH2_DRIVER_LOAD_MODE["DATASVC_BULKLOAD"] or
+            self.load_mode == constants.CH2_DRIVER_LOAD_MODE["DATASVC_LOAD"]):
+            collection = self.collections[tableName]
+            if self.load_mode == constants.CH2_DRIVER_LOAD_MODE["DATASVC_BULKLOAD"]:
+                # For bulk load: load in batches
+                cur_batch = {}
+                cur_size = 0
+                for t in tuples:
+                    key, val = self.getOneDoc(tableName, t, False)
+                    cur_batch[key] = val
+                    cur_size += len(key) + len(val) + 24 # 24 bytes of overhead
+
+                    if cur_size > BYTES_PER_BATCH:
+                        try:
+                            result = collection.upsert_multi(cur_batch)
+                        except:
+                            logging.debug("Failed bulk load data into KV %s" % cur_batch)
+                            sys.exit(0)
+
+                        cur_batch = {}
+                        cur_size = 0
+                if cur_size > 0:
+                    try:
+                        result = collection.upsert_multi(cur_batch)
+                    except:
+                        logging.debug("Failed bulk load data into KV %s" % cur_batch)
+                        sys.exit(0)
+
+            else:
+                #self.load_mode == constants.CH2_DRIVER_LOAD_MODE["DATASVC_LOAD"]
+                # Load one document at a time
+                for t in tuples:
+                    key, val = self.getOneDoc(tableName, t, False)
+                    try:
+                        result = collection.upsert(key, val)
+                    except:
+                        logging.debug("Failed load data into KV KEY:%s, VAL:%s" % (key, val))
+        elif self.load_mode == constants.CH2_DRIVER_LOAD_MODE["QRYSVC_BULKLOAD"]:
+            for t in tuples:
+                args = []
+                args.append(tableName)
+                args.append("")
+                args.append("")
+                args.append({})
+                key, val = self.getOneDoc(tableName, t, False)
+                args[1] = key
+                args[2] = val
+
+                doQueryParam("__upsert", args, "", self.query_node)
+        else:
+            logging.info("No data or query node specified for load")
+            sys.exit(0)
+
         return
+
+    def getOneDoc(self, tableName, tuple, denorm):
+         columns = TABLE_COLUMNS[tableName]
+
+         key = ""
+         if denorm:
+             for l, k in enumerate(KEYNAMES[tableName]):
+                 if l == 0:
+                     key = str(tuple[columns[k]])
+                 else:
+                     key = key + '.' + str(tuple[columns[k]])
+             val = tuple
+         else:
+             for l, k in enumerate(KEYNAMES[tableName]):
+                 if l == 0:
+                     key = str(tuple[k])
+                 else:
+                     key = key + '.' + str(tuple[k])
+             val = {}
+             for l, v in enumerate(tuple):
+                 v1 = tuple[l]
+                 if tableName == constants.TABLENAME_ORDERS and columns[l] == "o_orderline":
+                     v1 = []
+                     for olv in v:
+                         v1.append(self.genOrderLine(olv))
+                 elif isinstance(v1,(datetime)):
+                     v1 = str(v1)
+                 val[columns[l]] = v1
+
+         return key, val
 
     def loadOneDoc(self, tableName, tuple, denorm):
          columns = TABLE_COLUMNS[tableName]
@@ -595,7 +705,7 @@ class NestcollectionsDriver(AbstractDriver):
          args[1] = key
          args[2] = val
          doQueryParam("__upsert", args, "", self.query_node)
-        
+
     def genOrderLine(self, tuple):
         ol_columns = TABLE_COLUMNS[constants.TABLENAME_ORDERLINE]
         rval = {}
@@ -634,12 +744,12 @@ class NestcollectionsDriver(AbstractDriver):
         w_id = params["w_id"]
         o_carrier_id = params["o_carrier_id"]
         ol_delivery_d = params["ol_delivery_d"]
-     
+
         result = [ ]
         for d_id in range(1, constants.DISTRICTS_PER_WAREHOUSE+1):
             rs1, status = runNQuery("begin", self.prepared_dict[ txn + "beginWork"],"",self.delivery_txtimeout, randomhost)
             txid = rs1[0]['txid']
-            
+
             newOrder, status = runNQueryParam(self.prepared_dict[ txn + "getNewOrder"], [d_id, w_id], txid, randomhost)
             if len(newOrder) == 0:
                 assert len(newOrder) > 0
@@ -650,7 +760,7 @@ class NestcollectionsDriver(AbstractDriver):
             if (status != "success"):
                 continue
             c_id = rs[0]['o_c_id']
-            
+
             rs2,status = runNQueryParam(self.prepared_dict[ txn + "sumOLAmount"], [no_o_id, d_id, w_id], txid, randomhost)
             if (status != "success"):
                 continue
@@ -659,7 +769,7 @@ class NestcollectionsDriver(AbstractDriver):
             result,status = runNQueryParam(self.prepared_dict[ txn + "deleteNewOrder"], [d_id, w_id, no_o_id], txid, randomhost)
             if (status != "success"):
                 continue
-            
+
             result,status = runNQueryParam(self.prepared_dict[ txn + "updateOrders"], [o_carrier_id, no_o_id, d_id, w_id], txid, randomhost)
             if (status != "success"):
                 continue
@@ -667,7 +777,7 @@ class NestcollectionsDriver(AbstractDriver):
             result,status = runNQueryParam(self.prepared_dict[ txn + "updateOrderLine"], [ol_delivery_d, no_o_id, d_id, w_id], txid, randomhost)
             if (status != "success"):
                 continue
-            
+
             # These must be logged in the "result file" according to TPC-C 2.7.2.2 (page 39)
             # We remove the queued time, completed time, w_id, and o_carrier_id: the client can figure
             # them out
@@ -725,7 +835,7 @@ class NestcollectionsDriver(AbstractDriver):
                 return
                 assert len(rs) > 0
             items.append(rs[0])
-        
+
 
         ## TPCC defines 1% of neworder gives a wrong itemid, causing rollback.
         ## Note that this will happen with 1% of transactions on purpose.
@@ -735,7 +845,7 @@ class NestcollectionsDriver(AbstractDriver):
                 trs, self.tx_status = runNQuery("rollback", self.prepared_dict[ txn + "rollbackWork"],txid,"",randomhost)
                 return
         ## FOR
-        
+
         ## ----------------
         ## Collect Information from WAREHOUSE, DISTRICT, and CUSTOMER
         ## ----------------
@@ -746,12 +856,12 @@ class NestcollectionsDriver(AbstractDriver):
              return
         if len(rs) > 0:
             w_tax = rs[0]['w_tax']
-        
+
         district_info, status = runNQueryParam(self.prepared_dict[ txn +"getDistrict"], [d_id, w_id], txid, randomhost)
         if len(district_info) != 0:
             d_tax = district_info[0]['d_tax']
             d_next_o_id = district_info[0]['d_next_o_id']
-        
+
         rs, status = runNQueryParam(self.prepared_dict[ txn + "getCustomer"], [w_id, d_id, c_id], txid, randomhost)
         if len(rs) != 0:
             c_discount = rs[0]['c_discount']
@@ -766,17 +876,17 @@ class NestcollectionsDriver(AbstractDriver):
         if (status != "success"):
              trs, self.tx_status = runNQuery("rollback", self.prepared_dict[ txn + "rollbackWork"],txid,"",randomhost)
              return
-        
+
         rs, status = runNQueryParam(self.prepared_dict[ txn + "createOrder"], [d_next_o_id, d_id, w_id, c_id, o_entry_d, o_carrier_id, ol_cnt, all_local], txid, randomhost)
         if (status != "success"):
              trs, self.tx_status = runNQuery("rollback", self.prepared_dict[ txn + "rollbackWork"],txid,"",randomhost)
              return
-        
+
         rs,status = runNQueryParam(self.prepared_dict[ txn + "createNewOrder"], [d_next_o_id, d_id, w_id], txid, randomhost)
         if (status != "success"):
              trs, self.tx_status = runNQuery("rollback", self.prepared_dict[ txn + "rollbackWork"],txid,"",randomhost)
              return
-        
+
         #print "NewOrder Stage #1"
 
         ## ----------------
@@ -825,7 +935,7 @@ class NestcollectionsDriver(AbstractDriver):
             else:
                 s_quantity = s_quantity + 91 - ol_quantity
             s_order_cnt += 1
-            
+
             if ol_supply_w_id != w_id: s_remote_cnt += 1
 
             # print "NewOrder Stage #5"
@@ -844,7 +954,7 @@ class NestcollectionsDriver(AbstractDriver):
             total += ol_amount
 
             rs, status = runNQueryParam(self.prepared_dict[ txn + "createOrderLine"], [d_next_o_id, d_id, w_id, ol_number, ol_i_id, ol_supply_w_id, o_entry_d, ol_quantity, ol_amount, s_dist_xx], txid, randomhost)
-            
+
 
             ## Add the info to be returned
             item_data.append( (i_name, s_quantity, brand_generic, i_price, ol_amount) )
@@ -859,7 +969,7 @@ class NestcollectionsDriver(AbstractDriver):
 
         ## Pack up values the client is missing (see TPC-C 2.4.3.5)
         misc = [ (w_tax, d_tax, d_next_o_id, total) ]
-        
+
         # print "//end of NewOrder"
         return [ customer_info, misc, item_data ]
 
@@ -878,7 +988,7 @@ class NestcollectionsDriver(AbstractDriver):
         d_id = params["d_id"]
         c_id = params["c_id"]
         c_last = params["c_last"]
-        
+
         assert w_id, pformat(params)
         assert d_id, pformat(params)
 
@@ -994,12 +1104,12 @@ class NestcollectionsDriver(AbstractDriver):
         if (status != "success"):
              trs, self.tx_status = runNQuery("rollback", self.prepared_dict[ txn + "rollbackWork"],txid,"",randomhost)
              return
-        
+
         rs, status = runNQueryParam(self.prepared_dict[ txn + "updateDistrictBalance"], [h_amount, w_id, d_id], txid, randomhost)
         if (status != "success"):
              trs, self.tx_status = runNQuery("rollback", self.prepared_dict[ txn + "rollbackWork"],txid,"",randomhost)
              return
-        
+
         #print "doPayment: Stage3"
 
         # Customer Credit Information
@@ -1017,7 +1127,7 @@ class NestcollectionsDriver(AbstractDriver):
             if (status != "success"):
                  trs, self.tx_status = runNQuery("rollback", self.prepared_dict[ txn + "rollbackWork"],txid,"",randomhost)
                  return
-            
+
         #print "doPayment: Stage4"
         # Concatenate w_name, four spaces, d_name
         # print "warehouse %s" % (str(warehouse))
@@ -1028,7 +1138,7 @@ class NestcollectionsDriver(AbstractDriver):
         if (status != "success"):
                  trs, self.tx_status = runNQuery("rollback", self.prepared_dict[ txn + "rollbackWork"],txid,"",randomhost)
                  return
-        
+
         trs, self.tx_status = runNQuery("commit", self.prepared_dict[ txn + "commitWork"], txid,"",randomhost)
         #Keshav: self.conn.commit()
 
@@ -1076,7 +1186,7 @@ class NestcollectionsDriver(AbstractDriver):
         #runNQuery("COMMIT WORK", txid, "", randomhost)
         return int(result[0]['cnt_ol_i_id'])
 
-    
+
     def runCH2Queries(self, duration, endBenchmarkTime, queryIterNum):
         qry_times = {}
         if self.TAFlag == "A":
@@ -1102,7 +1212,7 @@ class NestcollectionsDriver(AbstractDriver):
                 body = n1ql_execute(self.analytics_node, stmt, 0)
                 end = time.time()
                 endTime = time.strftime("%H:%M:%S", time.localtime(end))
-                # In benchmark run mode, if the duration has elapsed, stop reporting queries                
+                # In benchmark run mode, if the duration has elapsed, stop reporting queries
                 if duration != None:
                     if end > endBenchmarkTime:
                         logging.debug("AClient" + str(self.client_id+1) + ":Loop" + str(queryIterNum+1) + ":" + qry + " ended at:   " + endTime + "ended after the duration of the benchmark")
