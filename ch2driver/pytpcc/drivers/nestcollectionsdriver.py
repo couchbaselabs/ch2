@@ -621,7 +621,7 @@ class NestcollectionsDriver(AbstractDriver):
                         result = collection.upsert(key, val)
                     except:
                         logging.debug("Failed load data into KV KEY:%s, VAL:%s" % (key, val))
-        elif self.load_mode == constants.CH2_DRIVER_LOAD_MODE["QRYSVC_BULKLOAD"]:
+        elif self.load_mode == constants.CH2_DRIVER_LOAD_MODE["QRYSVC_LOAD"]:
             for t in tuples:
                 args = []
                 args.append(tableName)
