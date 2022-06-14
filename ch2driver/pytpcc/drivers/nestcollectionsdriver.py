@@ -48,6 +48,7 @@ import random
 import time
 
 import sys
+import traceback
 import couchbase.collection
 from couchbase.cluster import Cluster, ClusterOptions
 from couchbase_core.cluster import PasswordAuthenticator
@@ -56,6 +57,7 @@ QUERY_URL = "127.0.0.1:8093"
 DATA_URL = "127.0.0.1"
 ANALYTICS_URL = "127.0.0.1:8095"
 BYTES_PER_BATCH = 1024 * 256 # 256K
+NUM_LOAD_RETRIES = 10
 
 USER_ID = "Administrator"
 PASSWORD = "password"
@@ -460,7 +462,7 @@ def n1ql_load(query_node, stmt):
 
     url = "http://{0}/query/service".format(query_node)
 ## RETRY LOGIC ADDED FOR LOAD
-    for i in range(10):
+    for i in range(NUM_LOAD_RETRIES):
         try:
             response = globpool.request('POST', url, fields=stmt, encode_multipart=False)
             response.read(cache_content=False)
@@ -574,6 +576,38 @@ class NestcollectionsDriver(AbstractDriver):
     def txStatus(self):
         return self.tx_status
 
+    def tryDataSvcBulkLoad(self, collection, cur_batch):
+        for i in range(NUM_LOAD_RETRIES):
+            try:
+                result = collection.upsert_multi(cur_batch)
+            except:
+                logging.debug("Failed bulk load data into KV, retrying %d" % i)
+                exc_info = sys.exc_info()
+                tb = ''.join(traceback.format_tb(exc_info[2]))
+                logging.debug(f'Exception info: {exc_info[1]}\nTraceback:\n{tb}')
+                if (i == NUM_LOAD_RETRIES-1):
+                    return False
+                continue;
+
+            if result.all_ok == True:
+                return True
+
+    def tryDataSvcLoad(self, collection, key, val):
+        for i in range(NUM_LOAD_RETRIES):
+            try:
+                result = collection.upsert(key, val)
+            except:
+                logging.debug("Failed bulk load data into KV, retrying %d" % i)
+                exc_info = sys.exc_info()
+                tb = ''.join(traceback.format_tb(exc_info[2]))
+                logging.debug(f'Exception info: {exc_info[1]}\nTraceback:\n{tb}')
+                if (i == NUM_LOAD_RETRIES-1):
+                    return False
+                continue;
+
+            if result.success == True:
+                return True
+
     ## ----------------------------------------------
     ## loadTuples for Couchbase (Adapted from MongoDB implemenetation).
     ## ----------------------------------------------
@@ -595,32 +629,29 @@ class NestcollectionsDriver(AbstractDriver):
                     key, val = self.getOneDoc(tableName, t, False)
                     cur_batch[key] = val
                     cur_size += len(key) + len(val) + 24 # 24 bytes of overhead
-
                     if cur_size > BYTES_PER_BATCH:
-                        try:
-                            result = collection.upsert_multi(cur_batch)
-                        except:
-                            logging.debug("Failed bulk load data into KV %s" % cur_batch)
+                        result = self.tryDataSvcBulkLoad(collection, cur_batch)
+                        if result == True:
+                            cur_batch = {}
+                            cur_size = 0
+                            continue
+                        else:
                             sys.exit(0)
-
-                        cur_batch = {}
-                        cur_size = 0
                 if cur_size > 0:
-                    try:
-                        result = collection.upsert_multi(cur_batch)
-                    except:
-                        logging.debug("Failed bulk load data into KV %s" % cur_batch)
+                    result = self.tryDataSvcBulkLoad(collection, cur_batch)
+                    if result == False:
                         sys.exit(0)
-
             else:
                 #self.load_mode == constants.CH2_DRIVER_LOAD_MODE["DATASVC_LOAD"]
                 # Load one document at a time
                 for t in tuples:
                     key, val = self.getOneDoc(tableName, t, False)
-                    try:
-                        result = collection.upsert(key, val)
-                    except:
-                        logging.debug("Failed load data into KV KEY:%s, VAL:%s" % (key, val))
+                    result = self.tryDataSvcLoad(collection, key, val)
+                    if result == True:
+                        continue
+                    else:
+                        sys.exit(0)
+
         elif self.load_mode == constants.CH2_DRIVER_LOAD_MODE["QRYSVC_LOAD"]:
             for t in tuples:
                 args = []
@@ -871,7 +902,7 @@ class NestcollectionsDriver(AbstractDriver):
         ## ----------------
         ol_cnt = len(i_ids)
         o_carrier_id = constants.NULL_CARRIER_ID
-        
+
         rs, status = runNQueryParam(self.prepared_dict[ txn + "incrementNextOrderId"], [d_next_o_id + 1, d_id, w_id], txid, randomhost)
         if (status != "success"):
              trs, self.tx_status = runNQuery("rollback", self.prepared_dict[ txn + "rollbackWork"],txid,"",randomhost)
