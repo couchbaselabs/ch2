@@ -46,17 +46,17 @@ import constants
 from .abstractdriver import *
 import random
 import time
+from datetime import timedelta
 
 import sys
 import traceback
 import couchbase.collection
-from couchbase.cluster import Cluster, ClusterOptions
+from couchbase.cluster import Cluster, ClusterOptions, ClusterTimeoutOptions
 from couchbase_core.cluster import PasswordAuthenticator
 
 QUERY_URL = "127.0.0.1:8093"
 DATA_URL = "127.0.0.1"
 ANALYTICS_URL = "127.0.0.1:8095"
-BYTES_PER_BATCH = 1024 * 256 # 256K
 NUM_LOAD_RETRIES = 10
 
 USER_ID = "Administrator"
@@ -331,7 +331,9 @@ prepared_dict = {}
 def pysdk_init(self):
     pa = PasswordAuthenticator(os.environ["USER_ID"], os.environ["PASSWORD"])
     str_data_node = str(self.data_node)
-    cluster = Cluster('couchbase://'+ str_data_node, ClusterOptions(pa))
+    timeout_opts = ClusterTimeoutOptions(kv_timeout=timedelta(seconds=self.kv_timeout))
+    cluster_opts = ClusterOptions(pa, timeout_options=timeout_opts)
+    cluster = Cluster('couchbase://'+ str_data_node, cluster_opts)
     bucket = cluster.bucket(constants.CH2_BUCKET)
     scope = bucket.scope(constants.CH2_SCOPE)
     self.collections = {}
@@ -491,7 +493,9 @@ class NestcollectionsDriver(AbstractDriver):
     }
 
     def __init__(self, ddl, clientId, TAFlag="T",
-                 load_mode=constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]):
+                 load_mode=constants.CH2_DRIVER_LOAD_MODE["NOT_SET"],
+                 kv_timeout=constants.CH2_DRIVER_KV_TIMEOUT,
+                 bulkload_batch_size=constants.CH2_DRIVER_BULKLOAD_BATCH_SIZE):
         global globpool
         global prepared_dict
         super(NestcollectionsDriver, self).__init__("nestcollections", ddl)
@@ -506,6 +510,8 @@ class NestcollectionsDriver(AbstractDriver):
         self.client_id = clientId
         self.TAFlag = TAFlag
         self.load_mode = load_mode
+        self.kv_timeout = kv_timeout
+        self.bulkload_batch_size = bulkload_batch_size
         if len(self.MULTI_QUERY_LIST) > 1 and clientId >= 0:
             self.query_node = self.MULTI_QUERY_LIST[self.client_id%len(self.MULTI_QUERY_LIST)]
         if len(self.MULTI_DATA_LIST) > 1 and clientId >= 0:
@@ -629,7 +635,7 @@ class NestcollectionsDriver(AbstractDriver):
                     key, val = self.getOneDoc(tableName, t, False)
                     cur_batch[key] = val
                     cur_size += len(key) + len(val) + 24 # 24 bytes of overhead
-                    if cur_size > BYTES_PER_BATCH:
+                    if cur_size > self.bulkload_batch_size:
                         result = self.tryDataSvcBulkLoad(collection, cur_batch)
                         if result == True:
                             cur_batch = {}
@@ -754,7 +760,7 @@ class NestcollectionsDriver(AbstractDriver):
         if logging.getLogger().isEnabledFor(logging.DEBUG):
             for name in constants.ALL_TABLES:
                 if self.denormalize and name in NestCollectionsDriver.DENORMALIZED_TABLES[1:]: return
-                logging.debug("%-12s%d records" % (name+":", self.database[name].count()))
+                #logging.debug("%-12s%d records" % (name+":", self.database[name].count()))
         #Nothing to commit for N1QL
 
         return

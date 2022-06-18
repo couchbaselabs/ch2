@@ -72,7 +72,7 @@ def getDrivers():
 ## ==============================================
 ## startLoading
 ## ==============================================
-def startLoading(driverClass, scaleParameters, args, configi, load_mode):
+def startLoading(driverClass, scaleParameters, args, configi, load_mode, kv_timeout, bulkload_batch_size):
     numClients = args['tclients'] + args['aclients']
     logging.debug("Creating client pool with %d processes" % numClients)
     pool = multiprocessing.Pool(numClients)
@@ -87,7 +87,7 @@ def startLoading(driverClass, scaleParameters, args, configi, load_mode):
 
     loader_results = [ ]
     for i in range(numClients):
-        r = pool.apply_async(loaderFunc, (i, driverClass, scaleParameters, args, config, w_ids[i], load_mode, True))
+        r = pool.apply_async(loaderFunc, (i, driverClass, scaleParameters, args, config, w_ids[i], load_mode, kv_timeout, bulkload_batch_size, True))
         loader_results.append(r)
     ## FOR
 
@@ -99,8 +99,8 @@ def startLoading(driverClass, scaleParameters, args, configi, load_mode):
 ## ==============================================
 ## loaderFunc
 ## ==============================================
-def loaderFunc(clientId, driverClass, scaleParameters, args, config, w_ids, load_mode, debug):
-    driver = driverClass(args['ddl'], clientId, "L", load_mode)
+def loaderFunc(clientId, driverClass, scaleParameters, args, config, w_ids, load_mode, kv_timeout, bulkload_batch_size, debug):
+    driver = driverClass(args['ddl'], clientId, "L", load_mode, kv_timeout, bulkload_batch_size)
     assert driver != None
     logging.debug("Starting client execution: %s [warehouses=%d]" % (driver, len(w_ids)))
 
@@ -219,17 +219,17 @@ if __name__ == '__main__':
                          help='Number of Warehouses')
     aparser.add_argument('--duration', type=int, metavar='D',
                          help='How long to run the benchmark in seconds')
-    aparser.add_argument('--warmup-duration', type=int, metavar='D',
+    aparser.add_argument('--warmup-duration', type=int, metavar='WD',
                          help='Warm up duration of the benchmark in seconds')
-    aparser.add_argument('--query-iterations', type=int, metavar='I',
+    aparser.add_argument('--query-iterations', type=int, metavar='QI',
                          help='How many iterations of the queries to run')
-    aparser.add_argument('--warmup-query-iterations', type=int, metavar='I',
+    aparser.add_argument('--warmup-query-iterations', type=int, metavar='WQI',
                          help='Number of warmup iterations of the queries to run')
     aparser.add_argument('--ddl', default=os.path.realpath(os.path.join(os.path.dirname(__file__), "tpcc.sql")),
                          help='Path to the TPC-C DDL SQL file')
-    aparser.add_argument('--tclients', default=0, type=int, metavar='N',
+    aparser.add_argument('--tclients', default=0, type=int, metavar='TC',
                          help='The number of blocking transaction clients to fork')
-    aparser.add_argument('--aclients', default=0, type=int, metavar='N',
+    aparser.add_argument('--aclients', default=0, type=int, metavar='AC',
                          help='The number of blocking analytics clients to fork')
     aparser.add_argument('--stop-on-error', action='store_true',
                          help='Stop the transaction execution when the driver throws an exception.')
@@ -239,6 +239,10 @@ if __name__ == '__main__':
                          help='Disable executing the workload')
     aparser.add_argument('--datasvc-bulkload', action='store_true',
                          help='Enable bulk loading the data through the data service')
+    aparser.add_argument('--kv-timeout', type=int,
+                         help='KV timeout for loading the data through the data service')
+    aparser.add_argument('--bulkload-batch-size', type=int,
+                         help='Batch size for bulk loading the data through the data service')
     aparser.add_argument('--datasvc-load', action='store_true',
                          help='Enable loading the data through the data service')
     aparser.add_argument('--qrysvc-load', action='store_true',
@@ -249,7 +253,7 @@ if __name__ == '__main__':
                          help='Enable debug log messages')
     aparser.add_argument('--durability_level',
                          help='durability level', default="persistToMajority")
-    aparser.add_argument('--txtimeout', metavar='N', type=float, default=3,
+    aparser.add_argument('--txtimeout', metavar='TXTO', type=float, default=3,
                          help='txtimeout number in sec(ex: 2.5)')
     aparser.add_argument('--scan_consistency', metavar='not_bounded', default="not_bounded",
                          help='not_bounded,request_plus')
@@ -304,12 +308,24 @@ if __name__ == '__main__':
         else:
             logging.info("Cannot specify multiple types of load")
             sys.exit(0)
+        if args['bulkload_batch_size']:
+            bulkload_batch_size = args['bulkload_batch_size']
+        else:
+            bulkload_batch_size = constants.CH2_DRIVER_BULKLOAD_BATCH_SIZE
+
     if args['datasvc_load']:
         if load_mode == constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]:
             load_mode = constants.CH2_DRIVER_LOAD_MODE["DATASVC_LOAD"]
         else:
             logging.info("Cannot specify multiple types of load")
             sys.exit(0)
+
+    if args['datasvc_bulkload'] or args['datasvc_load']:
+        if args['kv_timeout']:
+            kv_timeout = args['kv_timeout']
+        else:
+            kv_timeout = constants.CH2_DRIVER_KV_TIMEOUT
+
     if args['qrysvc_load']:
         if load_mode == constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]:
             load_mode = constants.CH2_DRIVER_LOAD_MODE["QRYSVC_LOAD"]
@@ -384,7 +400,7 @@ if __name__ == '__main__':
     val = -1
     if args['no_execute']:
          val = 0
-         driver = driverClass(args['ddl'], val, "L", load_mode)
+         driver = driverClass(args['ddl'], val, "L", load_mode, kv_timeout, bulkload_batch_size)
     else:
         TAFlag = "T"
         if numClients == 1:
@@ -433,7 +449,7 @@ if __name__ == '__main__':
             l.execute()
             driver.loadFinish()
         else:
-            startLoading(driverClass, scaleParameters, args, config, load_mode)
+            startLoading(driverClass, scaleParameters, args, config, load_mode, kv_timeout, bulkload_batch_size)
         load_time = time.time() - load_start
     ## IF
 
