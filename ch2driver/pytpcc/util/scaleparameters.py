@@ -35,12 +35,13 @@ import constants
 def makeDefault(warehouses):
     return ScaleParameters(constants.NUM_ITEMS, \
                            warehouses, \
+                           constants.STARTING_WAREHOUSE, \
                            constants.DISTRICTS_PER_WAREHOUSE, \
                            constants.CUSTOMERS_PER_DISTRICT, \
                            constants.INITIAL_NEW_ORDERS_PER_DISTRICT)
 ## DEF
 
-def makeWithScaleFactor(warehouses, scaleFactor):
+def makeWithScaleFactor(warehouses, starting_warehouse, scaleFactor):
     assert scaleFactor >= 1.0
 
     items = int(constants.NUM_ITEMS/scaleFactor)
@@ -49,17 +50,17 @@ def makeWithScaleFactor(warehouses, scaleFactor):
     customers = int(max(constants.CUSTOMERS_PER_DISTRICT/scaleFactor, 1))
     newOrders = int(max(constants.INITIAL_NEW_ORDERS_PER_DISTRICT/scaleFactor, 0))
 
-    return ScaleParameters(items, warehouses, districts, customers, newOrders)
+    return ScaleParameters(items, warehouses, starting_warehouse, districts, customers, newOrders)
 ## DEF
 
 class ScaleParameters:
     
-    def __init__(self, items, warehouses, districtsPerWarehouse, customersPerDistrict, newOrdersPerDistrict):
+    def __init__(self, items, warehouses, starting_warehouse, districtsPerWarehouse, customersPerDistrict, newOrdersPerDistrict):
         assert 1 <= items and items <= constants.NUM_ITEMS
         self.items = items
         assert warehouses > 0
         self.warehouses = warehouses
-        self.starting_warehouse = 1
+        self.starting_warehouse = starting_warehouse
         assert 1 <= districtsPerWarehouse and districtsPerWarehouse <= constants.DISTRICTS_PER_WAREHOUSE
         self.districtsPerWarehouse = districtsPerWarehouse
         assert 1 <= customersPerDistrict and customersPerDistrict <= constants.CUSTOMERS_PER_DISTRICT

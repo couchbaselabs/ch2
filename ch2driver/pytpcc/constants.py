@@ -57,6 +57,9 @@ STATE = 2
 ZIP_LENGTH = 9
 ZIP_SUFFIX = "11111"
 
+# Warehouse constants
+STARTING_WAREHOUSE = 1
+
 #  Stock constants
 MIN_QUANTITY = 10
 MAX_QUANTITY = 100

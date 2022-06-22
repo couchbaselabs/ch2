@@ -217,6 +217,8 @@ if __name__ == '__main__':
                          help='Benchmark scale factor')
     aparser.add_argument('--warehouses', default=4, type=int, metavar='W',
                          help='Number of Warehouses')
+    aparser.add_argument('--starting_warehouse', default=1, type=int, metavar='SW',
+                         help='Starting warehouse number')
     aparser.add_argument('--duration', type=int, metavar='D',
                          help='How long to run the benchmark in seconds')
     aparser.add_argument('--warmup-duration', type=int, metavar='WD',
@@ -433,7 +435,7 @@ if __name__ == '__main__':
     logging.info("Initializing TPC-C benchmark using %s" % driver)
 
     ## Create ScaleParameters
-    scaleParameters = scaleparameters.makeWithScaleFactor(args['warehouses'], args['scalefactor'])
+    scaleParameters = scaleparameters.makeWithScaleFactor(args['warehouses'], args['starting_warehouse'], args['scalefactor'])
     rand.setNURand(nurand.makeForLoad())
     if args['debug']: logging.debug("Scale Parameters:\n%s" % scaleParameters)
 
