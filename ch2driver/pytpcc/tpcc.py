@@ -304,16 +304,15 @@ if __name__ == '__main__':
         run_date = args['run_date']
         os.environ["RUN_DATE"] = str(run_date)
     load_mode = constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]
+    bulkload_batch_size = constants.CH2_DRIVER_BULKLOAD_BATCH_SIZE
+    kv_timeout = constants.CH2_DRIVER_KV_TIMEOUT
+
     if args['datasvc_bulkload']:
         if load_mode == constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]:
             load_mode = constants.CH2_DRIVER_LOAD_MODE["DATASVC_BULKLOAD"]
         else:
             logging.info("Cannot specify multiple types of load")
             sys.exit(0)
-        if args['bulkload_batch_size']:
-            bulkload_batch_size = args['bulkload_batch_size']
-        else:
-            bulkload_batch_size = constants.CH2_DRIVER_BULKLOAD_BATCH_SIZE
 
     if args['datasvc_load']:
         if load_mode == constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]:
@@ -322,11 +321,11 @@ if __name__ == '__main__':
             logging.info("Cannot specify multiple types of load")
             sys.exit(0)
 
-    if args['datasvc_bulkload'] or args['datasvc_load']:
-        if args['kv_timeout']:
-            kv_timeout = args['kv_timeout']
-        else:
-            kv_timeout = constants.CH2_DRIVER_KV_TIMEOUT
+    if args['bulkload_batch_size']:
+        bulkload_batch_size = args['bulkload_batch_size']
+
+    if args['kv_timeout']:
+        kv_timeout = args['kv_timeout']
 
     if args['qrysvc_load']:
         if load_mode == constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]:
@@ -334,6 +333,7 @@ if __name__ == '__main__':
         else:
             logging.info("Cannot specify multiple types of load")
             sys.exit(0)
+
     if not args['no_load']:
        if load_mode == constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]:
             logging.info("Need to specify the type of load")
