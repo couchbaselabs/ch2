@@ -587,32 +587,40 @@ class NestcollectionsDriver(AbstractDriver):
             try:
                 result = collection.upsert_multi(cur_batch)
             except:
-                logging.debug("Failed bulk load data into KV, retrying %d" % i)
+                logging.debug("Client ID # %d failed bulk load data into KV, try %d" % (self.client_id, i))
                 exc_info = sys.exc_info()
                 tb = ''.join(traceback.format_tb(exc_info[2]))
                 logging.debug(f'Exception info: {exc_info[1]}\nTraceback:\n{tb}')
                 if (i == NUM_LOAD_RETRIES-1):
+                    logging.debug("Client ID # %d failed bulk load data into KV after %d retries" % (self.client_id, NUM_LOAD_RETRIES))
                     return False
-                continue;
+                time.sleep(5)
+                continue
 
             if result.all_ok == True:
                 return True
+
+        return False
 
     def tryDataSvcLoad(self, collection, key, val):
         for i in range(NUM_LOAD_RETRIES):
             try:
                 result = collection.upsert(key, val)
             except:
-                logging.debug("Failed bulk load data into KV, retrying %d" % i)
+                logging.debug("Client ID # %d failed load data into KV, try %d" % (self.client_id, i))
                 exc_info = sys.exc_info()
                 tb = ''.join(traceback.format_tb(exc_info[2]))
                 logging.debug(f'Exception info: {exc_info[1]}\nTraceback:\n{tb}')
                 if (i == NUM_LOAD_RETRIES-1):
+                    logging.debug("Client ID # %d failed load data into KV after %d attempts" % (self.client_id, NUM_LOAD_RETRIES))
                     return False
-                continue;
+                time.sleep(5)
+                continue
 
             if result.success == True:
                 return True
+
+        return False
 
     ## ----------------------------------------------
     ## loadTuples for Couchbase (Adapted from MongoDB implemenetation).
@@ -642,10 +650,12 @@ class NestcollectionsDriver(AbstractDriver):
                             cur_size = 0
                             continue
                         else:
+                            logging.debug("Client ID # %d failed bulk load data into KV, aborting..." % self.client_id)
                             sys.exit(0)
                 if cur_size > 0:
                     result = self.tryDataSvcBulkLoad(collection, cur_batch)
                     if result == False:
+                        logging.debug("Client ID # %d failed bulk load data into KV, aborting..." % self.client_id)
                         sys.exit(0)
             else:
                 #self.load_mode == constants.CH2_DRIVER_LOAD_MODE["DATASVC_LOAD"]
@@ -656,6 +666,7 @@ class NestcollectionsDriver(AbstractDriver):
                     if result == True:
                         continue
                     else:
+                        logging.debug("Client ID # %d failed load data into KV, aborting..." % self.client_id)
                         sys.exit(0)
 
         elif self.load_mode == constants.CH2_DRIVER_LOAD_MODE["QRYSVC_LOAD"]:
