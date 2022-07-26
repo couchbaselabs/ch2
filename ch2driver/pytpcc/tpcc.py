@@ -87,7 +87,7 @@ def startLoading(driverClass, scaleParameters, args, configi, load_mode, kv_time
 
     loader_results = [ ]
     for i in range(numClients):
-        r = pool.apply_async(loaderFunc, (i, driverClass, scaleParameters, args, config, w_ids[i], load_mode, kv_timeout, bulkload_batch_size, True))
+        r = pool.apply_async(loaderFunc, (i, driverClass, scaleParameters, args, config, w_ids[i], load_mode, kv_timeout, bulkload_batch_size, debug))
         loader_results.append(r)
     ## FOR
 
