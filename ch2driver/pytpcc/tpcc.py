@@ -405,10 +405,9 @@ if __name__ == '__main__':
          driver = driverClass(args['ddl'], val, "L", load_mode, kv_timeout, bulkload_batch_size)
     else:
         TAFlag = "T"
-        if numClients == 1:
-            if numAClients == 1:
-                TAFlag = "A"
-                val = 0
+        if numTClients == 0:
+            TAFlag = "A"
+            val = 0
         driver = driverClass(args['ddl'], val, TAFlag)
     assert driver != None, "Failed to create '%s' driver" % args['system']
     if args['print_config']:
