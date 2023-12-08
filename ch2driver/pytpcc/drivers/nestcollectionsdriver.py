@@ -334,7 +334,10 @@ def pysdk_init(self):
     str_data_node = str(self.data_node)
     timeout_opts = ClusterTimeoutOptions(kv_timeout=timedelta(seconds=self.kv_timeout))
     cluster_opts = ClusterOptions(pa, timeout_options=timeout_opts)
-    cluster = Cluster('couchbase://'+ str_data_node, cluster_opts)
+    protocol = 'couchbase://'
+    if bool(int(os.environ['TLS'])):
+        protocol = 'couchbases://'
+    cluster = Cluster(protocol + str_data_node, cluster_opts)
     bucket = cluster.bucket(constants.CH2_BUCKET)
     scope = bucket.scope(constants.CH2_SCOPE)
     self.collections = {}
@@ -435,12 +438,17 @@ def n1ql_execute(node, stmt, query=1):
     global gcred
     global globpool
 #    headers = urllib3.make_headers(basic_auth='Administrator:password')
-    headers = urllib3.make_headers(basic_auth=os.environ["USER_ID"] + ":" + os.environ["PASSWORD"])
+    headers = urllib3.make_headers(
+        basic_auth=os.environ["USER_ID_ANALYTICS"] + ":" + os.environ["PASSWORD_ANALYTICS"]
+    )
+    protocol = 'http://'
+    if bool(int(os.environ['TLS'])):
+        protocol = 'https://'
     if query:
         stmt['creds'] = gcreds
-        url = "http://{0}/query/service".format(node)
+        url = "{}{}/query/service".format(protocol, node)
     else:
-        url = "http://{0}/analytics/service".format(node)
+        url = "{}{}/analytics/service".format(protocol, node)
     try:
         if query:
             response = globpool.request('POST', url, fields=stmt, encode_multipart=False)
@@ -463,7 +471,11 @@ def n1ql_load(query_node, stmt):
 #    stmt['durability_level'] = 'majorityAndPersistActive'
 #    stmt['tximplicit'] = True
 
-    url = "http://{0}/query/service".format(query_node)
+    protocol = 'http://'
+    if bool(int(os.environ['TLS'])):
+        protocol = 'https://'
+
+    url = "{}{}/query/service".format(protocol, query_node)
 ## RETRY LOGIC ADDED FOR LOAD
     for i in range(NUM_LOAD_RETRIES):
         try:
