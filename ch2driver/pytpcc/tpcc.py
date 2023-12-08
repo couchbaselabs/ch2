@@ -279,7 +279,7 @@ if __name__ == '__main__':
     password = "password"
     userid_analytics = "Administrator"
     password_analytics = "password"
-    use_tls = 0
+    use_tls = '0'
 
     if args['query_url']:
         query_url = args['query_url']
@@ -332,7 +332,7 @@ if __name__ == '__main__':
         os.environ["RUN_DATE"] = str(run_date)
 
     if args['tls']:
-        use_tls = 1
+        use_tls = '1'
     os.environ["TLS"] = use_tls
 
     load_mode = constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]
