@@ -333,10 +333,10 @@ def pysdk_init(self):
     str_data_node = str(self.data_node)
     timeout_opts = ClusterTimeoutOptions(kv_timeout=timedelta(seconds=self.kv_timeout))
     cluster_opts = ClusterOptions(pa, timeout_options=timeout_opts)
-    protocol = 'couchbase://'
+    endpoint = 'couchbase://{}'.format(str_data_node)
     if bool(int(os.environ['TLS'])):
-        protocol = 'couchbases://'
-    cluster = Cluster(protocol + str_data_node, cluster_opts)
+        endpoint = 'couchbases://{}?ssl=no_verify'.format(str_data_node)
+    cluster = Cluster(endpoint, cluster_opts)
     bucket = cluster.bucket(constants.CH2_BUCKET)
     scope = bucket.scope(constants.CH2_SCOPE)
     self.collections = {}
