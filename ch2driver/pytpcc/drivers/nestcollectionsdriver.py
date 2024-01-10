@@ -51,7 +51,8 @@ from datetime import timedelta
 import sys
 import traceback
 import couchbase.collection
-from couchbase.cluster import Cluster, ClusterOptions, ClusterTimeoutOptions
+from couchbase.cluster import Cluster
+from couchbase.options import ClusterOptions, ClusterTimeoutOptions
 from couchbase.auth import PasswordAuthenticator
 
 QUERY_URL = "127.0.0.1:8093"
