@@ -543,7 +543,7 @@ class NestcollectionsDriver(AbstractDriver):
             pysdk_init(self)
         if globpool == None:
             gcreds = '[{"user":"' + os.environ["USER_ID"] + '","pass":"' + os.environ["PASSWORD"] + '"}]'
-            globpool = PoolManager(10, retries=urllib3.Retry(10), maxsize=60)
+            globpool = PoolManager(10, retries=urllib3.Retry(10), maxsize=60, cert_reqs='CERT_NONE')
 
         if clientId >= 0:
             self.prepared_dict = prepared_dict
