@@ -1275,6 +1275,7 @@ class NestcollectionsDriver(AbstractDriver):
                         break
 
                 logging.info("AClient" + str(self.client_id+1) + ":Loop" + str(queryIterNum+1) + ":" + qry + " ended at:   " + endTime)
+                logging.info("AClient" + str(self.client_id+1) + ":Loop" + str(queryIterNum+1) + ":" + qry + " metrics: " + str(body['metrics']))
                 q_times.append(self.client_id+1)
                 q_times.append(queryIterNum+1)
                 q_times.append(startTime)
