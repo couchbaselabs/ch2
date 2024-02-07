@@ -200,9 +200,9 @@ if __name__ == '__main__':
                          help='userid for couchbase', default = "Administrator")
     aparser.add_argument('--password',
                          help='password for couchbase', default = "password")
-    aparser.add_argument('--userid-analytics', default = "Administrator",
+    aparser.add_argument('--userid-analytics',
                          help='userid for analytics service (if analytics is separate)')
-    aparser.add_argument('--password-analytics', default = "password",
+    aparser.add_argument('--password-analytics',
                          help='password for analytics service (if analytics is separate)')
     aparser.add_argument('--query-url',
                          help='query-url <ip>:port', default = "127.0.0.1:8093")
@@ -277,8 +277,6 @@ if __name__ == '__main__':
     analytics_url = "127.0.0.1:8095"
     userid = "Administrator"
     password = "password"
-    userid_analytics = "Administrator"
-    password_analytics = "password"
     use_tls = '0'
 
     if args['query_url']:
