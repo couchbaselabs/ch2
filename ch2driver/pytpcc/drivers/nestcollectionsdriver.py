@@ -375,9 +375,8 @@ def retvalN1QLQuery(prefix, rj):
         if prefix != "" :
             status = prefix + "-" + status
 
-    results = []
     if 'results' not in rj:
-        logging.debug("Results JSON: %s" % (json.JSONEncoder().encode(body)))
+        logging.debug("Results JSON: %s" % (json.JSONEncoder().encode(rj)))
 
     return rj.get('results', []), status
 
