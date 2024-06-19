@@ -463,8 +463,9 @@ def n1ql_execute(node, stmt, query=1):
         if body['status'] != "success":
             logging.debug("%s --- %s" % (stmt, json.JSONEncoder().encode(body)))
         return body
-    except:
-        pass
+    except Exception as ex:
+        logging.info("Exception occured when executing query: %s: %s" % (type(ex).__name__, ex))
+        logging.debug(traceback.format_exc())
     return {}
 
 def n1ql_load(query_node, stmt):
@@ -1258,33 +1259,39 @@ class NestcollectionsDriver(AbstractDriver):
             #random.shuffle(ch2_queries_perm)
             ch2_queries_perm = constants.CH2_QUERIES_PERM[self.client_id]
             for qry in ch2_queries_perm:
-                q_times = []
+                query_id_str = "AClient %d:Loop %d:%s:" % (self.client_id + 1, queryIterNum + 1, qry)
                 query = constants.CH2_QUERIES[qry]
                 stmt = json.loads('{"statement" : "' + str(query) + '"}')
+
                 start = time.time()
                 startTime = time.strftime("%H:%M:%S", time.localtime(start))
+
                 # In benchmark run mode, if the duration has elapsed, stop executing queries
-                if duration != None:
+                if duration is not None:
                     if start > endBenchmarkTime:
-                        logging.debug("AClient" + str(self.client_id+1) + ":Loop" + str(queryIterNum+1) + ":" + qry + " started at:   " + startTime + "started after the duration of the benchmark")
+                        logging.debug("%s started at:   %s (started after the duration of the benchmark)" % (query_id_str, startTime))
                         break
-                logging.info("AClient" + str(self.client_id+1) + ":Loop" + str(queryIterNum+1) + ":" + qry + " started at: " + startTime)
+
+                logging.info("%s started at: %s" % (query_id_str, startTime))
                 body = n1ql_execute(self.analytics_node, stmt, 0)
                 end = time.time()
                 endTime = time.strftime("%H:%M:%S", time.localtime(end))
+
                 # In benchmark run mode, if the duration has elapsed, stop reporting queries
-                if duration != None:
+                if duration is not None:
                     if end > endBenchmarkTime:
-                        logging.debug("AClient" + str(self.client_id+1) + ":Loop" + str(queryIterNum+1) + ":" + qry + " ended at:   " + endTime + "ended after the duration of the benchmark")
+                        logging.debug("%s ended at:   %s (ended after the duration of the benchmark)" % (query_id_str, endTime))
                         break
 
-                logging.info("AClient" + str(self.client_id+1) + ":Loop" + str(queryIterNum+1) + ":" + qry + " ended at:   " + endTime)
-                logging.info("AClient" + str(self.client_id+1) + ":Loop" + str(queryIterNum+1) + ":" + qry + " metrics: " + str(body['metrics']))
-                q_times.append(self.client_id+1)
-                q_times.append(queryIterNum+1)
-                q_times.append(startTime)
-                q_times.append(body['metrics']['executionTime'])
-                q_times.append(endTime)
-                qry_times[qry] = q_times
+                logging.info("%s ended at:   %s" % (query_id_str, endTime))
+                logging.info("%s metrics:    %s" % (query_id_str, body.get("metrics")))
+
+                qry_times[qry] = [
+                    self.client_id + 1,
+                    queryIterNum + 1,
+                    startTime,
+                    body.get("metrics", {}).get("executionTime", "infs"),
+                    endTime,
+                ]
         return qry_times
 ## CLASS
