@@ -1270,9 +1270,14 @@ class NestcollectionsDriver(AbstractDriver):
             #random.seed(self.client_id*9973 + queryIterNum*19997)
             #random.shuffle(ch2_queries_perm)
             ch2_queries_perm = constants.CH2_QUERIES_PERM[self.client_id]
+            ch2_queries = (
+                constants.CH2_QUERIES_NON_OPTIMIZED
+                if bool(int(os.environ.get("UNOPTIMIZED_QUERIES", 0)))
+                else constants.CH2_QUERIES
+            )
             for qry in ch2_queries_perm:
                 query_id_str = "AClient %d:Loop %d:%s:" % (self.client_id + 1, queryIterNum + 1, qry)
-                query = constants.CH2_QUERIES[qry]
+                query = ch2_queries[qry]
                 stmt = json.loads('{"statement" : "' + str(query) + '"}')
 
                 start = time.time()

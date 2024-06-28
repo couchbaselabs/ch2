@@ -267,6 +267,8 @@ if __name__ == '__main__':
                          help='run date for TPCC data', default = "2021-01-01 00:00:00")
     aparser.add_argument('--tls', action='store_true',
                          help='Connect to Couchbase using TLS')
+    aparser.add_argument('--unoptimized_queries', action='store_true',
+                         help='Use non-hand-optimized CH2 queries')
     args = vars(aparser.parse_args())
     print (args)
     if args['debug']: logging.getLogger().setLevel(logging.DEBUG)
@@ -278,6 +280,7 @@ if __name__ == '__main__':
     userid = "Administrator"
     password = "password"
     use_tls = '0'
+    unoptimized_queries = '0'
 
     if args['query_url']:
         query_url = args['query_url']
@@ -332,6 +335,10 @@ if __name__ == '__main__':
     if args['tls']:
         use_tls = '1'
     os.environ["TLS"] = use_tls
+
+    if args['unoptimized_queries']:
+        unoptimized_queries = '1'
+    os.environ["UNOPTIMIZED_QUERIES"] = unoptimized_queries
 
     load_mode = constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]
     bulkload_batch_size = constants.CH2_DRIVER_BULKLOAD_BATCH_SIZE
