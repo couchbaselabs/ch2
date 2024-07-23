@@ -33,6 +33,7 @@ from __future__ import with_statement
 
 import os
 import logging
+import re
 import socket
 import subprocess
 from pprint import pprint,pformat
@@ -1275,6 +1276,12 @@ class NestcollectionsDriver(AbstractDriver):
                 if bool(int(os.environ.get("UNOPTIMIZED_QUERIES", 0)))
                 else constants.CH2_QUERIES
             )
+            if bool(int(os.environ.get("IGNORE_SKIP_INDEX_HINTS", 0))):
+                pattern = re.compile(r"\/\*\+\sskip-index\s\*\/")
+                ch2_queries = {
+                    k: re.sub(pattern, "", v) for k, v in ch2_queries.items()
+                }
+
             for qry in ch2_queries_perm:
                 query_id_str = "AClient %d:Loop %d:%s:" % (self.client_id + 1, queryIterNum + 1, qry)
                 query = ch2_queries[qry]

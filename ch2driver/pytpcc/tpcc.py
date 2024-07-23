@@ -269,6 +269,8 @@ if __name__ == '__main__':
                          help='Connect to Couchbase using TLS')
     aparser.add_argument('--unoptimized_queries', action='store_true',
                          help='Use non-hand-optimized CH2 queries')
+    aparser.add_argument('--ignore-skip-index-hints', action='store_true',
+                         help='Ignore any "skip index" hints in the analytics queries')
     args = vars(aparser.parse_args())
     print (args)
     if args['debug']: logging.getLogger().setLevel(logging.DEBUG)
@@ -281,6 +283,7 @@ if __name__ == '__main__':
     password = "password"
     use_tls = '0'
     unoptimized_queries = '0'
+    ignore_skip_index_hints = "0"
 
     if args['query_url']:
         query_url = args['query_url']
@@ -339,6 +342,10 @@ if __name__ == '__main__':
     if args['unoptimized_queries']:
         unoptimized_queries = '1'
     os.environ["UNOPTIMIZED_QUERIES"] = unoptimized_queries
+
+    if args["ignore_skip_index_hints"]:
+        ignore_skip_index_hints = "1"
+    os.environ["IGNORE_SKIP_INDEX_HINTS"] = ignore_skip_index_hints
 
     load_mode = constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]
     bulkload_batch_size = constants.CH2_DRIVER_BULKLOAD_BATCH_SIZE
