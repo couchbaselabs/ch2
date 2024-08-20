@@ -33,6 +33,8 @@ from __future__ import with_statement
 
 import os
 import logging
+import re
+import socket
 import subprocess
 from pprint import pprint,pformat
 
@@ -334,7 +336,10 @@ def pysdk_init(self):
     str_data_node = str(self.data_node)
     timeout_opts = ClusterTimeoutOptions(kv_timeout=timedelta(seconds=self.kv_timeout))
     cluster_opts = ClusterOptions(pa, timeout_options=timeout_opts)
-    cluster = Cluster('couchbase://'+ str_data_node, cluster_opts)
+    endpoint = 'couchbase://{}'.format(str_data_node)
+    if bool(int(os.environ['TLS'])):
+        endpoint = 'couchbases://{}?ssl=no_verify'.format(str_data_node)
+    cluster = Cluster(endpoint, cluster_opts)
     bucket = cluster.bucket(constants.CH2_BUCKET)
     scope = bucket.scope(constants.CH2_SCOPE)
     self.collections = {}
@@ -371,7 +376,11 @@ def retvalN1QLQuery(prefix, rj):
 #            print rj
         if prefix != "" :
             status = prefix + "-" + status
-    return rj['results'], status
+
+    if 'results' not in rj:
+        logging.debug("Results JSON: %s" % (json.JSONEncoder().encode(rj)))
+
+    return rj.get('results', []), status
 
 
 ## ----------------------------------------------
@@ -435,12 +444,17 @@ def n1ql_execute(node, stmt, query=1):
     global gcred
     global globpool
 #    headers = urllib3.make_headers(basic_auth='Administrator:password')
-    headers = urllib3.make_headers(basic_auth=os.environ["USER_ID"] + ":" + os.environ["PASSWORD"])
+    headers = urllib3.make_headers(
+        basic_auth=os.environ["USER_ID_ANALYTICS"] + ":" + os.environ["PASSWORD_ANALYTICS"]
+    )
+    protocol = 'http://'
+    if bool(int(os.environ['TLS'])):
+        protocol = 'https://'
     if query:
         stmt['creds'] = gcreds
-        url = "http://{0}/query/service".format(node)
+        url = "{}{}/query/service".format(protocol, node)
     else:
-        url = "http://{0}/analytics/service".format(node)
+        url = "{}{}/analytics/service".format(protocol, node)
     try:
         if query:
             response = globpool.request('POST', url, fields=stmt, encode_multipart=False)
@@ -451,8 +465,9 @@ def n1ql_execute(node, stmt, query=1):
         if body['status'] != "success":
             logging.debug("%s --- %s" % (stmt, json.JSONEncoder().encode(body)))
         return body
-    except:
-        pass
+    except Exception as ex:
+        logging.info("Exception occured when executing query: %s: %s" % (type(ex).__name__, ex))
+        logging.debug(traceback.format_exc())
     return {}
 
 def n1ql_load(query_node, stmt):
@@ -463,7 +478,11 @@ def n1ql_load(query_node, stmt):
 #    stmt['durability_level'] = 'majorityAndPersistActive'
 #    stmt['tximplicit'] = True
 
-    url = "http://{0}/query/service".format(query_node)
+    protocol = 'http://'
+    if bool(int(os.environ['TLS'])):
+        protocol = 'https://'
+
+    url = "{}{}/query/service".format(protocol, query_node)
 ## RETRY LOGIC ADDED FOR LOAD
     for i in range(NUM_LOAD_RETRIES):
         try:
@@ -531,7 +550,18 @@ class NestcollectionsDriver(AbstractDriver):
             pysdk_init(self)
         if globpool == None:
             gcreds = '[{"user":"' + os.environ["USER_ID"] + '","pass":"' + os.environ["PASSWORD"] + '"}]'
-            globpool = PoolManager(10, retries=urllib3.Retry(10), maxsize=60)
+            globpool = PoolManager(
+                10,
+                retries=urllib3.Retry(10),
+                maxsize=60,
+                cert_reqs="CERT_NONE",
+                socket_options=[  # Set TCP keep-alive options for long running analytics queries
+                    (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),
+                    (socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 120),
+                    (socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 30),
+                    (socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 20),
+                ],
+            )
 
         if clientId >= 0:
             self.prepared_dict = prepared_dict
@@ -1241,33 +1271,51 @@ class NestcollectionsDriver(AbstractDriver):
             #random.seed(self.client_id*9973 + queryIterNum*19997)
             #random.shuffle(ch2_queries_perm)
             ch2_queries_perm = constants.CH2_QUERIES_PERM[self.client_id]
+            ch2_queries = (
+                constants.CH2_QUERIES_NON_OPTIMIZED
+                if bool(int(os.environ.get("UNOPTIMIZED_QUERIES", 0)))
+                else constants.CH2_QUERIES
+            )
+            if bool(int(os.environ.get("IGNORE_SKIP_INDEX_HINTS", 0))):
+                pattern = re.compile(r"\/\*\+\sskip-index\s\*\/")
+                ch2_queries = {
+                    k: re.sub(pattern, "", v) for k, v in ch2_queries.items()
+                }
+
             for qry in ch2_queries_perm:
-                q_times = []
-                query = constants.CH2_QUERIES[qry]
+                query_id_str = "AClient %d:Loop %d:%s:" % (self.client_id + 1, queryIterNum + 1, qry)
+                query = ch2_queries[qry]
                 stmt = json.loads('{"statement" : "' + str(query) + '"}')
+
                 start = time.time()
                 startTime = time.strftime("%H:%M:%S", time.localtime(start))
+
                 # In benchmark run mode, if the duration has elapsed, stop executing queries
-                if duration != None:
+                if duration is not None:
                     if start > endBenchmarkTime:
-                        logging.debug("AClient" + str(self.client_id+1) + ":Loop" + str(queryIterNum+1) + ":" + qry + " started at:   " + startTime + "started after the duration of the benchmark")
+                        logging.debug("%s started at:   %s (started after the duration of the benchmark)" % (query_id_str, startTime))
                         break
-                logging.info("AClient" + str(self.client_id+1) + ":Loop" + str(queryIterNum+1) + ":" + qry + " started at: " + startTime)
+
+                logging.info("%s started at: %s" % (query_id_str, startTime))
                 body = n1ql_execute(self.analytics_node, stmt, 0)
                 end = time.time()
                 endTime = time.strftime("%H:%M:%S", time.localtime(end))
+
                 # In benchmark run mode, if the duration has elapsed, stop reporting queries
-                if duration != None:
+                if duration is not None:
                     if end > endBenchmarkTime:
-                        logging.debug("AClient" + str(self.client_id+1) + ":Loop" + str(queryIterNum+1) + ":" + qry + " ended at:   " + endTime + "ended after the duration of the benchmark")
+                        logging.debug("%s ended at:   %s (ended after the duration of the benchmark)" % (query_id_str, endTime))
                         break
 
-                logging.info("AClient" + str(self.client_id+1) + ":Loop" + str(queryIterNum+1) + ":" + qry + " ended at:   " + endTime)
-                q_times.append(self.client_id+1)
-                q_times.append(queryIterNum+1)
-                q_times.append(startTime)
-                q_times.append(body['metrics']['executionTime'])
-                q_times.append(endTime)
-                qry_times[qry] = q_times
+                logging.info("%s ended at:   %s" % (query_id_str, endTime))
+                logging.info("%s metrics:    %s" % (query_id_str, body.get("metrics")))
+
+                qry_times[qry] = [
+                    self.client_id + 1,
+                    queryIterNum + 1,
+                    startTime,
+                    body.get("metrics", {}).get("executionTime", "infs"),
+                    endTime,
+                ]
         return qry_times
 ## CLASS
