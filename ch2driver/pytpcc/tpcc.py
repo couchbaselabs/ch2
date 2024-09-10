@@ -72,7 +72,7 @@ def getDrivers():
 ## ==============================================
 ## startLoading
 ## ==============================================
-def startLoading(driverClass, scaleParameters, args, configi, load_mode, kv_timeout, bulkload_batch_size):
+def startLoading(driverClass, scaleParameters, args, config, schema, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size):
     numClients = args['tclients'] + args['aclients']
     logging.debug("Creating client pool with %d processes" % numClients)
     pool = multiprocessing.Pool(numClients)
@@ -87,7 +87,7 @@ def startLoading(driverClass, scaleParameters, args, configi, load_mode, kv_time
 
     loader_results = [ ]
     for i in range(numClients):
-        r = pool.apply_async(loaderFunc, (i, driverClass, scaleParameters, args, config, w_ids[i], load_mode, kv_timeout, bulkload_batch_size, debug))
+        r = pool.apply_async(loaderFunc, (i, driverClass, scaleParameters, args, config, w_ids[i], schema, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size, debug))
         loader_results.append(r)
     ## FOR
 
@@ -99,8 +99,8 @@ def startLoading(driverClass, scaleParameters, args, configi, load_mode, kv_time
 ## ==============================================
 ## loaderFunc
 ## ==============================================
-def loaderFunc(clientId, driverClass, scaleParameters, args, config, w_ids, load_mode, kv_timeout, bulkload_batch_size, debug):
-    driver = driverClass(args['ddl'], clientId, "L", load_mode, kv_timeout, bulkload_batch_size)
+def loaderFunc(clientId, driverClass, scaleParameters, args, config, w_ids, schema, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size, debug):
+    driver = driverClass(args['ddl'], clientId, "L", schema, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size)
     assert driver != None
     logging.debug("Starting client execution: %s [warehouses=%d]" % (driver, len(w_ids)))
 
@@ -111,7 +111,7 @@ def loaderFunc(clientId, driverClass, scaleParameters, args, config, w_ids, load
 
     try:
         loadItems = (1 in w_ids)
-        l = loader.Loader(driver, scaleParameters, w_ids, loadItems)
+        l = loader.Loader(driver, scaleParameters, w_ids, loadItems, schema, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode)
         driver.loadStart()
         l.execute()
         driver.loadFinish()
@@ -193,7 +193,7 @@ def executorFunc(clientId, TAFlag, driverClass, qDone, warmupDurationQ, warmupDu
 ## main
 ## ==============================================
 if __name__ == '__main__':
-    aparser = argparse.ArgumentParser(description='Python implementation of the TPC-C Benchmark')
+    aparser = argparse.ArgumentParser(description='Python implementation of the CH2 Benchmark')
     aparser.add_argument('system', choices=getDrivers(),
                          help='Target system driver')
     aparser.add_argument('--userid',
@@ -232,7 +232,7 @@ if __name__ == '__main__':
     aparser.add_argument('--warmup-query-iterations', type=int, metavar='WQI',
                          help='Number of warmup iterations of the queries to run')
     aparser.add_argument('--ddl', default=os.path.realpath(os.path.join(os.path.dirname(__file__), "tpcc.sql")),
-                         help='Path to the TPC-C DDL SQL file')
+                         help='Path to the CH2 DDL SQL file')
     aparser.add_argument('--tclients', default=0, type=int, metavar='TC',
                          help='The number of blocking transaction clients to fork')
     aparser.add_argument('--aclients', default=0, type=int, metavar='AC',
@@ -253,6 +253,15 @@ if __name__ == '__main__':
                          help='Enable loading the data through the data service')
     aparser.add_argument('--qrysvc-load', action='store_true',
                          help='Enable loading the data through the query service')
+    aparser.add_argument('--ch2p', action='store_true', help='Create CH2+ schema')
+    aparser.add_argument('--ch2pp', action='store_true', help='Create CH2++ schema')
+    aparser.add_argument('--customerExtraFields', default=32, type=int,
+                         help='Number of extra unused fields in Customer')
+    aparser.add_argument('--ordersExtraFields', default=32, type=int,
+                         help='Number of extra unused fields in Orders')
+    aparser.add_argument('--itemExtraFields', default=32, type=int,
+                         help='Number of extra unused fields in Item')
+
     aparser.add_argument('--print-config', action='store_true',
                          help='Print out the default configuration file for the system and exit')
     aparser.add_argument('--debug', action='store_true',
@@ -264,7 +273,7 @@ if __name__ == '__main__':
     aparser.add_argument('--scan_consistency', metavar='not_bounded', default="not_bounded",
                          help='not_bounded,request_plus')
     aparser.add_argument('--run-date',
-                         help='run date for TPCC data', default = "2021-01-01 00:00:00")
+                         help='run date for CH2 data', default = "2021-01-01 00:00:00")
     aparser.add_argument('--tls', action='store_true',
                          help='Connect to Couchbase using TLS')
     aparser.add_argument('--unoptimized_queries', action='store_true',
@@ -333,7 +342,7 @@ if __name__ == '__main__':
 
     if args['run_date']:
         run_date = args['run_date']
-        os.environ["RUN_DATE"] = str(run_date)
+    os.environ["RUN_DATE"] = str(run_date)
 
     if args['tls']:
         use_tls = '1'
@@ -347,10 +356,21 @@ if __name__ == '__main__':
         ignore_skip_index_hints = "1"
     os.environ["IGNORE_SKIP_INDEX_HINTS"] = ignore_skip_index_hints
 
+    schema = constants.CH2_DRIVER_SCHEMA["CH2"]
     load_mode = constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]
     bulkload_batch_size = constants.CH2_DRIVER_BULKLOAD_BATCH_SIZE
     kv_timeout = constants.CH2_DRIVER_KV_TIMEOUT
 
+    if args['ch2p']:
+        schema = constants.CH2_DRIVER_SCHEMA["CH2P"]
+    elif args['ch2pp']:
+        schema = constants.CH2_DRIVER_SCHEMA["CH2PP"]
+    if args['customerExtraFields']:
+        customerExtraFields = args['customerExtraFields']
+    if args['ordersExtraFields']:
+        ordersExtraFields = args['ordersExtraFields']
+    if args['itemExtraFields']:
+        itemExtraFields = args['itemExtraFields']
     if args['datasvc_bulkload']:
         if load_mode == constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]:
             load_mode = constants.CH2_DRIVER_LOAD_MODE["DATASVC_BULKLOAD"]
@@ -446,7 +466,7 @@ if __name__ == '__main__':
     val = -1
     if args['no_execute']:
          val = 0
-         driver = driverClass(args['ddl'], val, "L", load_mode, kv_timeout, bulkload_batch_size)
+         driver = driverClass(args['ddl'], val, "L", schema, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size)
     else:
         TAFlag = "T"
         if numTClients == 0:
@@ -475,7 +495,7 @@ if __name__ == '__main__':
     config['execute'] = False
     if config['reset']: logging.info("Reseting database")
     driver.loadConfig(config)
-    logging.info("Initializing TPC-C benchmark using %s" % driver)
+    logging.info("Initializing CH2 benchmark using %s" % driver)
 
     ## Create ScaleParameters
     scaleParameters = scaleparameters.makeWithScaleFactor(args['warehouses'], args['starting_warehouse'], args['scalefactor'])
@@ -486,15 +506,15 @@ if __name__ == '__main__':
     numClients = numTClients + numAClients
     load_time = None
     if not args['no_load']:
-        logging.info("Loading TPC-C benchmark data using %s" % (driver))
+        logging.info("Loading CH2 benchmark data using %s" % (driver))
         load_start = time.time()
         if numClients == 1:
-            l = loader.Loader(driver, scaleParameters, range(scaleParameters.starting_warehouse, scaleParameters.ending_warehouse+1), True)
+            l = loader.Loader(driver, scaleParameters, range(scaleParameters.starting_warehouse, scaleParameters.ending_warehouse+1), True, schema, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode)
             driver.loadStart()
             l.execute()
             driver.loadFinish()
         else:
-            startLoading(driverClass, scaleParameters, args, config, load_mode, kv_timeout, bulkload_batch_size)
+            startLoading(driverClass, scaleParameters, args, config, schema, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size)
         load_time = time.time() - load_start
     ## IF
 

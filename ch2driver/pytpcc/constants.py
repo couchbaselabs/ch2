@@ -163,6 +163,15 @@ CH2_DRIVER_LOAD_MODE = {
     "DATASVC_LOAD":1,
     "QRYSVC_LOAD":2
 }
+CH2_DRIVER_SCHEMA = {
+    "CH2":0,
+    "CH2P":1,
+    "CH2PP":2
+}
+CH2PP_CUSTOMER_EXTRA_FIELDS = 32
+CH2PP_ORDERS_EXTRA_FIELDS = 32
+CH2PP_ITEM_EXTRA_FIELDS = 32
+
 CH2_DRIVER_KV_TIMEOUT = 10
 CH2_DRIVER_BULKLOAD_BATCH_SIZE = 1024 * 256 # 256K
 
@@ -179,6 +188,12 @@ TABLENAME_HISTORY    = "default:bench.ch2.history"
 TABLENAME_SUPPLIER   = "default:bench.ch2.supplier"
 TABLENAME_NATION     = "default:bench.ch2.nation"
 TABLENAME_REGION     = "default:bench.ch2.region"
+TABLENAME_WAREHOUSE_ADDRESS  = "default:bench.ch2.warehouse_address"
+TABLENAME_DISTRICT_ADDRESS  = "default:bench.ch2.district_address"
+TABLENAME_CUSTOMER_NAME  = "default:bench.ch2.customer_name"
+TABLENAME_CUSTOMER_ADDRESSES  = "default:bench.ch2.customer_addresses"
+TABLENAME_CUSTOMER_PHONES  = "default:bench.ch2.customer_phones"
+TABLENAME_SUPPLIER_ADDRESS  = "default:bench.ch2.supplier_address"
 
 COLLECTIONS_DICT = {
     TABLENAME_ITEM:"item",
