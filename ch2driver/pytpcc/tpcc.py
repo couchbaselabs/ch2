@@ -255,11 +255,12 @@ if __name__ == '__main__':
                          help='Enable loading the data through the query service')
     aparser.add_argument('--ch2p', action='store_true', help='Create CH2+ schema')
     aparser.add_argument('--ch2pp', action='store_true', help='Create CH2++ schema')
-    aparser.add_argument('--customerExtraFields', default=32, type=int,
+    aparser.add_argument('--nonOptimizedQueries', action='store_true', help='Run the out of the box unoptimized 22 analytical CH2 queries')
+    aparser.add_argument('--customerExtraFields', default=128, type=int,
                          help='Number of extra unused fields in Customer')
-    aparser.add_argument('--ordersExtraFields', default=32, type=int,
+    aparser.add_argument('--ordersExtraFields', default=128, type=int,
                          help='Number of extra unused fields in Orders')
-    aparser.add_argument('--itemExtraFields', default=32, type=int,
+    aparser.add_argument('--itemExtraFields', default=128, type=int,
                          help='Number of extra unused fields in Item')
 
     aparser.add_argument('--print-config', action='store_true',
@@ -276,8 +277,6 @@ if __name__ == '__main__':
                          help='run date for CH2 data', default = "2021-01-01 00:00:00")
     aparser.add_argument('--tls', action='store_true',
                          help='Connect to Couchbase using TLS')
-    aparser.add_argument('--unoptimized_queries', action='store_true',
-                         help='Use non-hand-optimized CH2 queries')
     aparser.add_argument('--ignore-skip-index-hints', action='store_true',
                          help='Ignore any "skip index" hints in the analytics queries')
     args = vars(aparser.parse_args())
@@ -348,15 +347,12 @@ if __name__ == '__main__':
         use_tls = '1'
     os.environ["TLS"] = use_tls
 
-    if args['unoptimized_queries']:
-        unoptimized_queries = '1'
-    os.environ["UNOPTIMIZED_QUERIES"] = unoptimized_queries
-
     if args["ignore_skip_index_hints"]:
         ignore_skip_index_hints = "1"
     os.environ["IGNORE_SKIP_INDEX_HINTS"] = ignore_skip_index_hints
 
     schema = constants.CH2_DRIVER_SCHEMA["CH2"]
+    analyticalQueries = constants.CH2_DRIVER_ANALYTICAL_QUERIES["HAND_OPTIMIZED_QUERIES"]
     load_mode = constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]
     bulkload_batch_size = constants.CH2_DRIVER_BULKLOAD_BATCH_SIZE
     kv_timeout = constants.CH2_DRIVER_KV_TIMEOUT
@@ -365,6 +361,8 @@ if __name__ == '__main__':
         schema = constants.CH2_DRIVER_SCHEMA["CH2P"]
     elif args['ch2pp']:
         schema = constants.CH2_DRIVER_SCHEMA["CH2PP"]
+    if args['nonOptimizedQueries']:
+        analyticalQueries = constants.CH2_DRIVER_ANALYTICAL_QUERIES["NON_OPTIMIZED_QUERIES"]
     if args['customerExtraFields']:
         customerExtraFields = args['customerExtraFields']
     if args['ordersExtraFields']:
