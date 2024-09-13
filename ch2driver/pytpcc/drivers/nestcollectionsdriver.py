@@ -86,6 +86,74 @@ TXN_QUERIES = {
         "getWarehouseTaxRate": "SELECT w_tax FROM default:bench.ch2.warehouse WHERE w_id = $1", # w_id
         "getDistrict": "SELECT d_tax, d_next_o_id FROM default:bench.ch2.district WHERE d_id = $1 AND d_w_id = $2", # d_id, w_id
         "incrementNextOrderId": "UPDATE default:bench.ch2.district SET d_next_o_id = $1 WHERE d_id = $2 AND d_w_id = $3", # d_next_o_id, d_id, w_id
+        "getCustomer": "SELECT c_discount, c_last, c_credit FROM default:bench.ch2.customer USE KEYS [(to_string($1) || '.' ||  to_string($2) || '.' ||  to_string($3)) ] ", # w_id, d_id, c_id
+        "createOrder": "INSERT INTO default:bench.ch2.orders (KEY, VALUE) VALUES (TO_STRING($3) || '.' ||  TO_STRING($2) || '.' ||  TO_STRING($1), {\\\"o_id\\\":$1, \\\"o_d_id\\\":$2, \\\"o_w_id\\\":$3, \\\"o_c_id\\\":$4, \\\"o_entry_d\\\":$5, \\\"o_carrier_id\\\":$6, \\\"o_ol_cnt\\\":$7, \\\"o_all_local\\\":$8})", # d_next_o_id, d_id, w_id, c_id, o_entry_d, o_carrier_id, o_ol_cnt, o_all_local
+        "createNewOrder": "INSERT INTO default:bench.ch2.neworder(KEY, VALUE) VALUES(TO_STRING($2)|| '.' || TO_STRING($3)|| '.' || TO_STRING($1), {\\\"no_o_id\\\":$1,\\\"no_d_id\\\":$2,\\\"no_w_id\\\":$3})",
+        "getItemInfo": "SELECT i_price, i_name, i_data FROM default:bench.ch2.item USE KEYS [to_string($1)]", # ol_i_id
+        "getStockInfo": "SELECT s_quantity, s_data, s_ytd, s_order_cnt, s_remote_cnt, s_dist_%02d FROM default:bench.ch2.stock USE KEYS [TO_STRING($2)|| '.' || TO_STRING($1)]", # d_id, ol_i_id, ol_supply_w_id
+        "updateStock": "UPDATE default:bench.ch2.stock USE KEYS [to_string($6) || '.' || to_string($5)] SET s_quantity = $1, s_ytd = $2, s_order_cnt = $3, s_remote_cnt = $4 ", # s_quantity, s_order_cnt, s_remote_cnt, ol_i_id, ol_supply_w_id
+#       "createOrderLine": "INSERT INTO default:bench.ch2.ORDER_LINE(KEY, VALUE) VALUES(TO_STRING($3)|| '.' || TO_STRING($2)|| '.' || TO_STRING($1)|| '.' || TO_STRING($4), { \\\"OL_O_ID\\\":$1, \\\"OL_D_ID\\\":$2, \\\"OL_W_ID\\\":$3, \\\"OL_NUMBER\\\":$4, \\\"OL_I_ID\\\":$5, \\\"OL_SUPPLY_W_ID\\\":$6, \\\"OL_DELIVERY_D\\\":$7, \\\"OL_QUANTITY\\\":$8, \\\"OL_AMOUNT\\\":$9, \\\"OL_DIST_INFO\\\":$10})" # o_id, d_id, w_id, ol_number, ol_i_id, ol_supply_w_id, ol_quantity, ol_amount, ol_dist_info
+        "createOrderLine": "UPSERT INTO default:bench.ch2.orders(KEY, VALUE) VALUES(TO_STRING($3)|| '.' || TO_STRING($2)|| '.' || TO_STRING($1), { \\\"o_id\\\":$1, \\\"o_d_id\\\":$2, \\\"o_w_id\\\":$3, \\\"o_orderline\\\": [{\\\"ol_number\\\":$4, \\\"ol_i_id\\\":$5, \\\"ol_supply_w_id\\\":$6, \\\"ol_delivery_d\\\":$7, \\\"ol_quantity\\\":$8, \\\"ol_amount\\\":$9, \\\"ol_dist_info\\\":$10}]})"
+    },
+
+    "ORDER_STATUS": {
+        "beginWork": "BEGIN WORK",
+        "rollbackWork":"ROLLBACK WORK",
+        "commitWork":"COMMIT WORK",
+        "getCustomerByCustomerId": "SELECT c_id, c_first, c_middle, c_last, c_balance FROM default:bench.ch2.customer USE KEYS [(to_string($1) || '.' ||  to_string($2) || '.' ||  to_string($3)) ]", # w_id, d_id, c_id
+        "getCustomersByLastName": "SELECT c_id, c_first, c_middle, c_last, c_balance FROM default:bench.ch2.customer WHERE c_w_id = $1 AND c_d_id = $2 AND c_last = $3 ORDER BY c_first", # w_id, d_id, c_last
+        "getLastOrder": "SELECT o_id, o_carrier_id, o_entry_d FROM default:bench.ch2.orders WHERE o_w_id = $1 AND o_d_id = $2 AND o_c_id = $3 ORDER BY o_id DESC LIMIT 1", # w_id, d_id, c_id
+#       "getOrderLines": "SELECT OL_SUPPLY_W_ID, OL_I_ID, OL_QUANTITY, OL_AMOUNT, OL_DELIVERY_D FROM default:bench.ch2.ORDER_LINE WHERE OL_W_ID = $1 AND OL_D_ID = $2 AND OL_O_ID = $3", # w_id, d_id, o_id
+        "getOrderLines": "SELECT ol.ol_supply_w_id, ol.ol_i_id, ol.ol_quantity, ol.ol_amount, ol.ol_delivery_d FROM default:bench.ch2.orders o unnest o.o_orderline ol WHERE o.o_w_id = $1 AND o.o_d_id = $2 AND o.o_id = $3", # w_id, d_id, o_id
+    },
+
+    "PAYMENT": {
+        "beginWork": "BEGIN WORK",
+        "rollbackWork":"ROLLBACK WORK",
+        "commitWork":"COMMIT WORK",
+        "getWarehouse": "SELECT w_name, w_street_1, w_street_2, w_city, w_state, w_zip FROM default:bench.ch2.warehouse WHERE w_id = $1", # w_id
+        "updateWarehouseBalance": "UPDATE default:bench.ch2.warehouse SET w_ytd = w_ytd + $1 WHERE w_id = $2", # h_amount, w_id
+        "getDistrict": "SELECT d_name, d_street_1, d_street_2, d_city, d_state, d_zip FROM default:bench.ch2.district WHERE d_w_id = $1 AND d_id = $2", # w_id, d_id
+        "updateDistrictBalance": "UPDATE default:bench.ch2.district SET d_ytd = d_ytd + $1 WHERE d_w_id  = $2 AND d_id = $3", # h_amount, d_w_id, d_id
+        "getCustomerByCustomerId": "SELECT c_id, c_first, c_middle, c_last, c_street_1, c_street_2, c_city, c_state, c_zip, c_phone, c_since, c_credit, c_credit_lim, c_discount, c_balance, c_ytd_payment, c_payment_cnt, c_data FROM default:bench.ch2.customer USE KEYS [(to_string($1) || '.' ||  to_string($2) || '.' ||  to_string($3)) ]", # w_id, d_id, c_id
+        "getCustomersByLastName": "SELECT c_id, c_first, c_middle, c_last, c_street_1, c_street_2, c_city, c_state, c_zip, c_phone, c_since, c_credit, c_credit_lim, c_discount, c_balance, c_ytd_payment, c_payment_cnt, c_data FROM default:bench.ch2.customer WHERE c_w_id = $1 AND c_d_id = $2 AND c_last = $3 ORDER BY c_first", # w_id, d_id, c_last
+        "updateBCCustomer": "UPDATE default:bench.ch2.customer USE KEYS [(to_string($6) || '.' ||  to_string($6) || '.' ||  to_string($7)) ] SET c_balance = $1, c_ytd_payment = $2, c_payment_cnt = $3, c_data = $4 ", # c_balance, c_ytd_payment, c_payment_cnt, c_data, c_w_id, c_d_id, c_id
+        "updateGCCustomer": "UPDATE default:bench.ch2.customer USE KEYS [(to_string($4) || '.' ||  to_string($5) || '.' ||  to_string($6)) ] SET c_balance = $1, c_ytd_payment = $2, c_payment_cnt = $3 ", # c_balance, c_ytd_payment, c_payment_cnt, c_w_id, c_d_id, c_id
+        "insertHistory": "INSERT INTO default:bench.ch2.history(KEY, VALUE) VALUES (TO_STRING($6), {\\\"h_c_id\\\":$1, \\\"h_c_d_id\\\":$2, \\\"h_c_w_id\\\":$3, \\\"h_d_id\\\":$4, \\\"h_w_id\\\":$5, \\\"h_date\\\":$6, \\\"h_amount\\\":$7, \\\"h_data\\\":$8})"
+    },
+
+    "STOCK_LEVEL": {
+        "getOId": "SELECT d_next_o_id FROM default:bench.ch2.district WHERE d_w_id = $1 AND d_id = $2",
+#        "getStockCount": " SELECT COUNT(DISTINCT(o.ol_i_id)) AS cnt_ol_i_id FROM  default:bench.ch2.ORDER_LINE o INNER JOIN default:bench.ch2.STOCK s ON KEYS (TO_STRING(o.OL_W_ID) || '.' ||  TO_STRING(o.OL_I_ID)) WHERE o.OL_W_ID = $1 AND o.OL_D_ID = $2 AND o.OL_O_ID < $3 AND o.OL_O_ID >= $4 AND s.S_QUANTITY < $6 "
+          "getStockCount": " SELECT COUNT(DISTINCT(ol.ol_i_id)) AS cnt_ol_i_id FROM default:bench.ch2.orders o UNNEST o.o_orderline ol INNER JOIN bench.ch2.stock s ON KEYS (TO_STRING(o.o_w_id) || '.' ||  TO_STRING(ol.ol_i_id)) WHERE o.o_w_id = $1 AND o.o_d_id = $2 AND o.o_id < $3 AND o.o_id >= $4 AND s.s_quantity < $6 "
+#        "ansigetStockCount": " SELECT COUNT(DISTINCT(o.OL_I_ID)) AS CNT_OL_I_ID FROM  default:bench.ch2.ORDER_LINE o INNER JOIN default:bench.ch2.STOCK s ON (o.OL_W_ID == s.S_W_ID AND o.OL_I_ID ==  s.S_I_ID) WHERE o.OL_W_ID = $1 AND o.OL_D_ID = $2 AND o.OL_O_ID < $3 AND o.OL_O_ID >= $4 AND s.S_QUANTITY < $6 ",
+#        "getOrdersByDistrict": "SELECT * FROM  default:bench.ch2.district d INNER JOIN default:bench.ch2.orders o ON d.d_id == o.o_d_id where d.d_id = $1",
+#        "getCustomerOrdersByDistrict": "SELECT COUNT(DISTINCT(c.c_id)) FROM  default:bench.ch2.customer c INNER JOIN default:bench.ch2.orders o USE HASH(BUILD) ON c.c_id == o.o_c_id WHERE c.c_d_id = $1" # d_id
+    },
+}
+
+CH2PP_TXN_QUERIES = {
+    "DELIVERY": {
+        "beginWork": "BEGIN WORK",
+        "rollbackWork":"ROLLBACK WORK",
+        "commitWork":"COMMIT WORK",
+        "getNewOrder": "SELECT no_o_id FROM default:bench.ch2.neworder WHERE no_d_id = $1 AND no_w_id = $2 AND no_o_id > -1 LIMIT 1", #
+        "deleteNewOrder": "DELETE FROM default:bench.ch2.neworder WHERE no_d_id = $1 AND no_w_id = $2 AND no_o_id = $3", # d_id, w_id, no_o_id
+        "getCId": "SELECT o_c_id FROM default:bench.ch2.orders WHERE o_id = $1 AND o_d_id = $2 AND o_w_id = $3", # no_o_id, d_id, w_id
+        "updateOrders": "UPDATE default:bench.ch2.orders SET o_carrier_id = $1 WHERE o_id = $2 AND o_d_id = $3 AND o_w_id = $4", # o_carrier_id, no_o_id, d_id, w_id
+#        "updateOrderLine": "UPDATE default:bench.ch2.ORDER_LINE SET OL_DELIVERY_D = $1 WHERE OL_O_ID = $2 AND OL_D_ID = $3 AND OL_W_ID = $4", # o_entry_d, no_o_id, d_id, w_id
+        "updateOrderLine": "UPDATE default:bench.ch2.orders SET ol.ol_delivery_d = $1 FOR ol IN o_orderline END WHERE o_id = $2 AND o_d_id = $3 AND o_w_id = $4", # o_entry_d, no_o_id, d_id, w_id
+#        "sumOLAmount": "SELECT SUM(OL_AMOUNT) AS SUM_OL_AMOUNT FROM default:bench.ch2.ORDER_LINE WHERE OL_O_ID = $1 AND OL_D_ID = $2 AND OL_W_ID = $3", # no_o_id, d_id, w_id
+        "sumOLAmount": "SELECT VALUE (SELECT SUM(ol.ol_amount) as sum_ol_amount FROM o.o_orderline ol)[0] FROM default:bench.ch2.orders o where o.o_id = $1 and o.o_d_id = $2 and o.o_w_id = $3",
+        "updateCustomer": "UPDATE default:bench.ch2.customer USE KEYS [(to_string($4) || '.' || to_string($3) || '.' ||  to_string($2))] SET c_balance = c_balance + $1 ", # ol_total, c_id, d_id, w_id
+    },
+    "NEW_ORDER": {
+        "beginWork": "BEGIN WORK",
+        "rollbackWork":"ROLLBACK WORK",
+        "commitWork":"COMMIT WORK",
+        "getWarehouseTaxRate": "SELECT w_tax FROM default:bench.ch2.warehouse WHERE w_id = $1", # w_id
+        "getDistrict": "SELECT d_tax, d_next_o_id FROM default:bench.ch2.district WHERE d_id = $1 AND d_w_id = $2", # d_id, w_id
+        "incrementNextOrderId": "UPDATE default:bench.ch2.district SET d_next_o_id = $1 WHERE d_id = $2 AND d_w_id = $3", # d_next_o_id, d_id, w_id
         "getCustomer": "SELECT c_discount, c_name.c_last, c_credit FROM default:bench.ch2.customer USE KEYS [(to_string($1) || '.' ||  to_string($2) || '.' ||  to_string($3)) ] ", # w_id, d_id, c_id
         "createOrder": "INSERT INTO default:bench.ch2.orders (KEY, VALUE) VALUES (TO_STRING($3) || '.' ||  TO_STRING($2) || '.' ||  TO_STRING($1), {\\\"o_id\\\":$1, \\\"o_d_id\\\":$2, \\\"o_w_id\\\":$3, \\\"o_c_id\\\":$4, \\\"o_entry_d\\\":$5, \\\"o_carrier_id\\\":$6, \\\"o_ol_cnt\\\":$7, \\\"o_all_local\\\":$8})", # d_next_o_id, d_id, w_id, c_id, o_entry_d, o_carrier_id, o_ol_cnt, o_all_local
         "createNewOrder": "INSERT INTO default:bench.ch2.neworder(KEY, VALUE) VALUES(TO_STRING($2)|| '.' || TO_STRING($3)|| '.' || TO_STRING($1), {\\\"no_o_id\\\":$1,\\\"no_d_id\\\":$2,\\\"no_w_id\\\":$3})",
@@ -95,7 +163,7 @@ TXN_QUERIES = {
 #       "createOrderLine": "INSERT INTO default:bench.ch2.ORDER_LINE(KEY, VALUE) VALUES(TO_STRING($3)|| '.' || TO_STRING($2)|| '.' || TO_STRING($1)|| '.' || TO_STRING($4), { \\\"OL_O_ID\\\":$1, \\\"OL_D_ID\\\":$2, \\\"OL_W_ID\\\":$3, \\\"OL_NUMBER\\\":$4, \\\"OL_I_ID\\\":$5, \\\"OL_SUPPLY_W_ID\\\":$6, \\\"OL_DELIVERY_D\\\":$7, \\\"OL_QUANTITY\\\":$8, \\\"OL_AMOUNT\\\":$9, \\\"OL_DIST_INFO\\\":$10})" # o_id, d_id, w_id, ol_number, ol_i_id, ol_supply_w_id, ol_quantity, ol_amount, ol_dist_info
         "createOrderLine": "UPSERT INTO default:bench.ch2.orders(KEY, VALUE) VALUES(TO_STRING($3)|| '.' || TO_STRING($2)|| '.' || TO_STRING($1), { \\\"o_id\\\":$1, \\\"o_d_id\\\":$2, \\\"o_w_id\\\":$3, \\\"o_orderline\\\": [{\\\"ol_number\\\":$4, \\\"ol_i_id\\\":$5, \\\"ol_supply_w_id\\\":$6, \\\"ol_delivery_d\\\":$7, \\\"ol_quantity\\\":$8, \\\"ol_amount\\\":$9, \\\"ol_dist_info\\\":$10}]})"
     },
-    
+
     "ORDER_STATUS": {
         "beginWork": "BEGIN WORK",
         "rollbackWork":"ROLLBACK WORK",
@@ -674,7 +742,8 @@ class NestcollectionsDriver(AbstractDriver):
                  itemExtraFields=constants.CH2PP_ITEM_EXTRA_FIELDS,
                  load_mode=constants.CH2_DRIVER_LOAD_MODE["NOT_SET"],
                  kv_timeout=constants.CH2_DRIVER_KV_TIMEOUT,
-                 bulkload_batch_size=constants.CH2_DRIVER_BULKLOAD_BATCH_SIZE):
+                 bulkload_batch_size=constants.CH2_DRIVER_BULKLOAD_BATCH_SIZE,
+                 analyticalQueries=constants.CH2_DRIVER_ANALYTICAL_QUERIES["HAND_OPTIMIZED_QUERIES"]):
         global globpool
         global prepared_dict
         super(NestcollectionsDriver, self).__init__("nestcollections", ddl)
@@ -689,6 +758,7 @@ class NestcollectionsDriver(AbstractDriver):
         self.client_id = clientId
         self.TAFlag = TAFlag
         self.schema = schema
+        self.analyticalQueries = analyticalQueries
         self.load_mode = load_mode
         self.customerExtraFields = customerExtraFields;
         self.ordersExtraFields = ordersExtraFields;
@@ -734,17 +804,21 @@ class NestcollectionsDriver(AbstractDriver):
             return
 
         if TAFlag == "T":
-            for txn in TXN_QUERIES:
-                for query in TXN_QUERIES[txn]:
+            if self.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
+                self.txnQueries = TXN_QUERIES
+            else:
+                self.txnQueries = CH2PP_TXN_QUERIES
+            for txn in self.txnQueries:
+                for query in self.txnQueries[txn]:
                     if query == "getStockInfo":
                         for i in range(1,11):
-                            converted_district = TXN_QUERIES[txn][query] % i
+                            converted_district = self.txnQueries[txn][query] % i
                             prepare_query = "PREPARE %s_%s_%s " % (txn, i, query) + "FROM %s" % converted_district
                             stmt = json.loads('{"statement" : "' + str(prepare_query) + '"}')
                             body = n1ql_execute(self.query_node, stmt)
                             prepared_dict[txn + str(i) + query] = body['results'][0]['name']
                     else:
-                        prepare_query = "PREPARE %s_%s " % (txn, query) + "FROM %s" % TXN_QUERIES[txn][query]
+                        prepare_query = "PREPARE %s_%s " % (txn, query) + "FROM %s" % self.txnQueries[txn][query]
                         stmt = json.loads('{"statement" : "' + str(prepare_query) + '"}')
                         body = n1ql_execute(self.query_node, stmt)
                         prepared_dict[txn + query] = body['results'][0]['name']
@@ -1012,13 +1086,12 @@ class NestcollectionsDriver(AbstractDriver):
     ## doDelivery
     ## ----------------------------------------------
     def doDelivery(self, params):
-
         self.tx_status = ""
         randomhost = self.query_node
 
         # print ("Entering doDelivery")
         txn = "DELIVERY"
-        q = TXN_QUERIES[txn]
+        q = self.txnQueries[txn]
         w_id = params["w_id"]
         o_carrier_id = params["o_carrier_id"]
         ol_delivery_d = params["ol_delivery_d"]
@@ -1083,7 +1156,7 @@ class NestcollectionsDriver(AbstractDriver):
 
         # print "Entering doNewOrder"
         txn = "NEW_ORDER"
-        q = TXN_QUERIES[txn]
+        q = self.txnQueries[txn]
         d_next_o_id = 0
         w_id = params["w_id"]
         d_id = params["d_id"]
@@ -1199,14 +1272,16 @@ class NestcollectionsDriver(AbstractDriver):
             s_order_cnt = stockInfo[0]["s_order_cnt"]
             s_remote_cnt = stockInfo[0]["s_remote_cnt"]
             s_data = stockInfo[0]["s_data"]
-            #distxx = "s_dist_" + str(d_id).zfill(2)
+
+            if self.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
+                distxx = "s_dist_" + str(d_id).zfill(2)
+                s_dist_xx = stockInfo[0][distxx] # Fetches data from the s_dist_[d_id] column
+            else:
+                s_dists = stockInfo[0]["sdists"] # Fetches data from the s_dist_[d_id] column
+                s_dist_xx = s_dists[d_id]
             # print "NewOrder Stage #4.01"
             # print distxx
             # print stockInfo[0][distxx]
-            #s_dist_xx = stockInfo[0][distxx] # Fetches data from the s_dist_[d_id] column
-            s_dists = stockInfo[0]["sdists"] # Fetches data from the s_dist_[d_id] column
-            s_dist_xx = s_dists[d_id]
-
             # print "NewOrder Stage #4.1"
             ## Update stock
             s_ytd += ol_quantity
@@ -1263,7 +1338,7 @@ class NestcollectionsDriver(AbstractDriver):
 
 #       print ("Entering doOrderStatus")
         txn = "ORDER_STATUS"
-        q = TXN_QUERIES[txn]
+        q = self.txnQueries[txn]
         w_id = params["w_id"]
         d_id = params["d_id"]
         c_id = params["c_id"]
@@ -1321,7 +1396,7 @@ class NestcollectionsDriver(AbstractDriver):
         randomhost = self.query_node
 
         txn = "PAYMENT"
-        q = TXN_QUERIES[txn]
+        q = self.txnQueries[txn]
         w_id = params["w_id"]
         d_id = params["d_id"]
         h_amount = params["h_amount"]
@@ -1443,7 +1518,7 @@ class NestcollectionsDriver(AbstractDriver):
 
         # print "Entering doStockLevel"
         txn = "STOCK_LEVEL"
-        q = TXN_QUERIES[txn]
+        q = self.txnQueries[txn]
 
         w_id = params["w_id"]
         d_id = params["d_id"]
@@ -1477,11 +1552,17 @@ class NestcollectionsDriver(AbstractDriver):
             #random.seed(self.client_id*9973 + queryIterNum*19997)
             #random.shuffle(ch2_queries_perm)
             ch2_queries_perm = constants.CH2_QUERIES_PERM[self.client_id]
-            ch2_queries = (
-                constants.CH2_QUERIES_NON_OPTIMIZED
-                if bool(int(os.environ.get("UNOPTIMIZED_QUERIES", 0)))
-                else constants.CH2_QUERIES
-            )
+            if self.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
+                if self.analyticalQueries == constants.CH2_DRIVER_ANALYTICAL_QUERIES["HAND_OPTIMIZED_QUERIES"]:
+                    ch2_queries = constants.CH2_QUERIES
+                else:
+                    ch2_queries = constants.CH2_QUERIES_NON_OPTIMIZED
+            else:
+                if self.analyticalQueries == constants.CH2_DRIVER_ANALYTICAL_QUERIES["HAND_OPTIMIZED_QUERIES"]:
+                    ch2_queries = constants.CH2PP_QUERIES
+                else:
+                    ch2_queries = constants.CH2PP_QUERIES_NON_OPTIMIZED
+
             if bool(int(os.environ.get("IGNORE_SKIP_INDEX_HINTS", 0))):
                 pattern = re.compile(r"\/\*\+\sskip-index\s\*\/")
                 ch2_queries = {
