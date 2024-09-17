@@ -73,9 +73,7 @@ TXN_QUERIES = {
         "deleteNewOrder": "DELETE FROM default:bench.ch2.neworder WHERE no_d_id = $1 AND no_w_id = $2 AND no_o_id = $3", # d_id, w_id, no_o_id
         "getCId": "SELECT o_c_id FROM default:bench.ch2.orders WHERE o_id = $1 AND o_d_id = $2 AND o_w_id = $3", # no_o_id, d_id, w_id
         "updateOrders": "UPDATE default:bench.ch2.orders SET o_carrier_id = $1 WHERE o_id = $2 AND o_d_id = $3 AND o_w_id = $4", # o_carrier_id, no_o_id, d_id, w_id
-#        "updateOrderLine": "UPDATE default:bench.ch2.ORDER_LINE SET OL_DELIVERY_D = $1 WHERE OL_O_ID = $2 AND OL_D_ID = $3 AND OL_W_ID = $4", # o_entry_d, no_o_id, d_id, w_id
         "updateOrderLine": "UPDATE default:bench.ch2.orders SET ol.ol_delivery_d = $1 FOR ol IN o_orderline END WHERE o_id = $2 AND o_d_id = $3 AND o_w_id = $4", # o_entry_d, no_o_id, d_id, w_id
-#        "sumOLAmount": "SELECT SUM(OL_AMOUNT) AS SUM_OL_AMOUNT FROM default:bench.ch2.ORDER_LINE WHERE OL_O_ID = $1 AND OL_D_ID = $2 AND OL_W_ID = $3", # no_o_id, d_id, w_id
         "sumOLAmount": "SELECT VALUE (SELECT SUM(ol.ol_amount) as sum_ol_amount FROM o.o_orderline ol)[0] FROM default:bench.ch2.orders o where o.o_id = $1 and o.o_d_id = $2 and o.o_w_id = $3",
         "updateCustomer": "UPDATE default:bench.ch2.customer USE KEYS [(to_string($4) || '.' || to_string($3) || '.' ||  to_string($2))] SET c_balance = c_balance + $1 ", # ol_total, c_id, d_id, w_id
     },
@@ -92,10 +90,9 @@ TXN_QUERIES = {
         "getItemInfo": "SELECT i_price, i_name, i_data FROM default:bench.ch2.item USE KEYS [to_string($1)]", # ol_i_id
         "getStockInfo": "SELECT s_quantity, s_data, s_ytd, s_order_cnt, s_remote_cnt, s_dist_%02d FROM default:bench.ch2.stock USE KEYS [TO_STRING($2)|| '.' || TO_STRING($1)]", # d_id, ol_i_id, ol_supply_w_id
         "updateStock": "UPDATE default:bench.ch2.stock USE KEYS [to_string($6) || '.' || to_string($5)] SET s_quantity = $1, s_ytd = $2, s_order_cnt = $3, s_remote_cnt = $4 ", # s_quantity, s_order_cnt, s_remote_cnt, ol_i_id, ol_supply_w_id
-#       "createOrderLine": "INSERT INTO default:bench.ch2.ORDER_LINE(KEY, VALUE) VALUES(TO_STRING($3)|| '.' || TO_STRING($2)|| '.' || TO_STRING($1)|| '.' || TO_STRING($4), { \\\"OL_O_ID\\\":$1, \\\"OL_D_ID\\\":$2, \\\"OL_W_ID\\\":$3, \\\"OL_NUMBER\\\":$4, \\\"OL_I_ID\\\":$5, \\\"OL_SUPPLY_W_ID\\\":$6, \\\"OL_DELIVERY_D\\\":$7, \\\"OL_QUANTITY\\\":$8, \\\"OL_AMOUNT\\\":$9, \\\"OL_DIST_INFO\\\":$10})" # o_id, d_id, w_id, ol_number, ol_i_id, ol_supply_w_id, ol_quantity, ol_amount, ol_dist_info
         "createOrderLine": "UPSERT INTO default:bench.ch2.orders(KEY, VALUE) VALUES(TO_STRING($3)|| '.' || TO_STRING($2)|| '.' || TO_STRING($1), { \\\"o_id\\\":$1, \\\"o_d_id\\\":$2, \\\"o_w_id\\\":$3, \\\"o_orderline\\\": [{\\\"ol_number\\\":$4, \\\"ol_i_id\\\":$5, \\\"ol_supply_w_id\\\":$6, \\\"ol_delivery_d\\\":$7, \\\"ol_quantity\\\":$8, \\\"ol_amount\\\":$9, \\\"ol_dist_info\\\":$10}]})"
     },
-    
+
     "ORDER_STATUS": {
         "beginWork": "BEGIN WORK",
         "rollbackWork":"ROLLBACK WORK",
@@ -103,7 +100,6 @@ TXN_QUERIES = {
         "getCustomerByCustomerId": "SELECT c_id, c_first, c_middle, c_last, c_balance FROM default:bench.ch2.customer USE KEYS [(to_string($1) || '.' ||  to_string($2) || '.' ||  to_string($3)) ]", # w_id, d_id, c_id
         "getCustomersByLastName": "SELECT c_id, c_first, c_middle, c_last, c_balance FROM default:bench.ch2.customer WHERE c_w_id = $1 AND c_d_id = $2 AND c_last = $3 ORDER BY c_first", # w_id, d_id, c_last
         "getLastOrder": "SELECT o_id, o_carrier_id, o_entry_d FROM default:bench.ch2.orders WHERE o_w_id = $1 AND o_d_id = $2 AND o_c_id = $3 ORDER BY o_id DESC LIMIT 1", # w_id, d_id, c_id
-#       "getOrderLines": "SELECT OL_SUPPLY_W_ID, OL_I_ID, OL_QUANTITY, OL_AMOUNT, OL_DELIVERY_D FROM default:bench.ch2.ORDER_LINE WHERE OL_W_ID = $1 AND OL_D_ID = $2 AND OL_O_ID = $3", # w_id, d_id, o_id
         "getOrderLines": "SELECT ol.ol_supply_w_id, ol.ol_i_id, ol.ol_quantity, ol.ol_amount, ol.ol_delivery_d FROM default:bench.ch2.orders o unnest o.o_orderline ol WHERE o.o_w_id = $1 AND o.o_d_id = $2 AND o.o_id = $3", # w_id, d_id, o_id
     },
 
@@ -124,11 +120,67 @@ TXN_QUERIES = {
 
     "STOCK_LEVEL": {
         "getOId": "SELECT d_next_o_id FROM default:bench.ch2.district WHERE d_w_id = $1 AND d_id = $2",
-#        "getStockCount": " SELECT COUNT(DISTINCT(o.ol_i_id)) AS cnt_ol_i_id FROM  default:bench.ch2.ORDER_LINE o INNER JOIN default:bench.ch2.STOCK s ON KEYS (TO_STRING(o.OL_W_ID) || '.' ||  TO_STRING(o.OL_I_ID)) WHERE o.OL_W_ID = $1 AND o.OL_D_ID = $2 AND o.OL_O_ID < $3 AND o.OL_O_ID >= $4 AND s.S_QUANTITY < $6 "
           "getStockCount": " SELECT COUNT(DISTINCT(ol.ol_i_id)) AS cnt_ol_i_id FROM default:bench.ch2.orders o UNNEST o.o_orderline ol INNER JOIN bench.ch2.stock s ON KEYS (TO_STRING(o.o_w_id) || '.' ||  TO_STRING(ol.ol_i_id)) WHERE o.o_w_id = $1 AND o.o_d_id = $2 AND o.o_id < $3 AND o.o_id >= $4 AND s.s_quantity < $6 "
-#        "ansigetStockCount": " SELECT COUNT(DISTINCT(o.OL_I_ID)) AS CNT_OL_I_ID FROM  default:bench.ch2.ORDER_LINE o INNER JOIN default:bench.ch2.STOCK s ON (o.OL_W_ID == s.S_W_ID AND o.OL_I_ID ==  s.S_I_ID) WHERE o.OL_W_ID = $1 AND o.OL_D_ID = $2 AND o.OL_O_ID < $3 AND o.OL_O_ID >= $4 AND s.S_QUANTITY < $6 ",
-#        "getOrdersByDistrict": "SELECT * FROM  default:bench.ch2.district d INNER JOIN default:bench.ch2.orders o ON d.d_id == o.o_d_id where d.d_id = $1",
-#        "getCustomerOrdersByDistrict": "SELECT COUNT(DISTINCT(c.c_id)) FROM  default:bench.ch2.customer c INNER JOIN default:bench.ch2.orders o USE HASH(BUILD) ON c.c_id == o.o_c_id WHERE c.c_d_id = $1" # d_id
+    },
+}
+
+CH2PP_TXN_QUERIES = {
+    "DELIVERY": {
+        "beginWork": "BEGIN WORK",
+        "rollbackWork":"ROLLBACK WORK",
+        "commitWork":"COMMIT WORK",
+        "getNewOrder": "SELECT no_o_id FROM default:bench.ch2.neworder WHERE no_d_id = $1 AND no_w_id = $2 AND no_o_id > -1 LIMIT 1", #
+        "deleteNewOrder": "DELETE FROM default:bench.ch2.neworder WHERE no_d_id = $1 AND no_w_id = $2 AND no_o_id = $3", # d_id, w_id, no_o_id
+        "getCId": "SELECT o_c_id FROM default:bench.ch2.orders WHERE o_id = $1 AND o_d_id = $2 AND o_w_id = $3", # no_o_id, d_id, w_id
+        "updateOrders": "UPDATE default:bench.ch2.orders SET o_carrier_id = $1 WHERE o_id = $2 AND o_d_id = $3 AND o_w_id = $4", # o_carrier_id, no_o_id, d_id, w_id
+        "updateOrderLine": "UPDATE default:bench.ch2.orders SET ol.ol_delivery_d = $1 FOR ol IN o_orderline END WHERE o_id = $2 AND o_d_id = $3 AND o_w_id = $4", # o_entry_d, no_o_id, d_id, w_id
+        "sumOLAmount": "SELECT VALUE (SELECT SUM(ol.ol_amount) as sum_ol_amount FROM o.o_orderline ol)[0] FROM default:bench.ch2.orders o where o.o_id = $1 and o.o_d_id = $2 and o.o_w_id = $3",
+        "updateCustomer": "UPDATE default:bench.ch2.customer USE KEYS [(to_string($4) || '.' || to_string($3) || '.' ||  to_string($2))] SET c_balance = c_balance + $1 ", # ol_total, c_id, d_id, w_id
+    },
+    "NEW_ORDER": {
+        "beginWork": "BEGIN WORK",
+        "rollbackWork":"ROLLBACK WORK",
+        "commitWork":"COMMIT WORK",
+        "getWarehouseTaxRate": "SELECT w_tax FROM default:bench.ch2.warehouse WHERE w_id = $1", # w_id
+        "getDistrict": "SELECT d_tax, d_next_o_id FROM default:bench.ch2.district WHERE d_id = $1 AND d_w_id = $2", # d_id, w_id
+        "incrementNextOrderId": "UPDATE default:bench.ch2.district SET d_next_o_id = $1 WHERE d_id = $2 AND d_w_id = $3", # d_next_o_id, d_id, w_id
+        "getCustomer": "SELECT c_discount, c_name.c_last, c_credit FROM default:bench.ch2.customer USE KEYS [(to_string($1) || '.' ||  to_string($2) || '.' ||  to_string($3)) ] ", # w_id, d_id, c_id
+        "createOrder": "INSERT INTO default:bench.ch2.orders (KEY, VALUE) VALUES (TO_STRING($3) || '.' ||  TO_STRING($2) || '.' ||  TO_STRING($1), {\\\"o_id\\\":$1, \\\"o_d_id\\\":$2, \\\"o_w_id\\\":$3, \\\"o_c_id\\\":$4, \\\"o_entry_d\\\":$5, \\\"o_carrier_id\\\":$6, \\\"o_ol_cnt\\\":$7, \\\"o_all_local\\\":$8})", # d_next_o_id, d_id, w_id, c_id, o_entry_d, o_carrier_id, o_ol_cnt, o_all_local
+        "createNewOrder": "INSERT INTO default:bench.ch2.neworder(KEY, VALUE) VALUES(TO_STRING($2)|| '.' || TO_STRING($3)|| '.' || TO_STRING($1), {\\\"no_o_id\\\":$1,\\\"no_d_id\\\":$2,\\\"no_w_id\\\":$3})",
+        "getItemInfo": "SELECT i_price, i_name, i_data FROM default:bench.ch2.item USE KEYS [to_string($1)]", # ol_i_id
+        "getStockInfo": "SELECT s_quantity, s_data, s_ytd, s_order_cnt, s_remote_cnt, s_dists FROM default:bench.ch2.stock USE KEYS [TO_STRING($2)|| '.' || TO_STRING($1)]", # d_id, ol_i_id, ol_supply_w_id
+        "updateStock": "UPDATE default:bench.ch2.stock USE KEYS [to_string($6) || '.' || to_string($5)] SET s_quantity = $1, s_ytd = $2, s_order_cnt = $3, s_remote_cnt = $4 ", # s_quantity, s_order_cnt, s_remote_cnt, ol_i_id, ol_supply_w_id
+        "createOrderLine": "UPSERT INTO default:bench.ch2.orders(KEY, VALUE) VALUES(TO_STRING($3)|| '.' || TO_STRING($2)|| '.' || TO_STRING($1), { \\\"o_id\\\":$1, \\\"o_d_id\\\":$2, \\\"o_w_id\\\":$3, \\\"o_orderline\\\": [{\\\"ol_number\\\":$4, \\\"ol_i_id\\\":$5, \\\"ol_supply_w_id\\\":$6, \\\"ol_delivery_d\\\":$7, \\\"ol_quantity\\\":$8, \\\"ol_amount\\\":$9, \\\"ol_dist_info\\\":$10}]})"
+    },
+
+    "ORDER_STATUS": {
+        "beginWork": "BEGIN WORK",
+        "rollbackWork":"ROLLBACK WORK",
+        "commitWork":"COMMIT WORK",
+        "getCustomerByCustomerId": "SELECT c_id, c_name.c_first, c_name.c_middle, c_name.c_last, c_balance FROM default:bench.ch2.customer USE KEYS [(to_string($1) || '.' ||  to_string($2) || '.' ||  to_string($3)) ]", # w_id, d_id, c_id
+        "getCustomersByLastName": "SELECT c_id, c_name.c_first, c_name.c_middle, c_name.c_last, c_balance FROM default:bench.ch2.customer WHERE c_w_id = $1 AND c_d_id = $2 AND c_name.c_last = $3 ORDER BY c_name.c_first", # w_id, d_id, c_last
+        "getLastOrder": "SELECT o_id, o_carrier_id, o_entry_d FROM default:bench.ch2.orders WHERE o_w_id = $1 AND o_d_id = $2 AND o_c_id = $3 ORDER BY o_id DESC LIMIT 1", # w_id, d_id, c_id
+        "getOrderLines": "SELECT ol.ol_supply_w_id, ol.ol_i_id, ol.ol_quantity, ol.ol_amount, ol.ol_delivery_d FROM default:bench.ch2.orders o unnest o.o_orderline ol WHERE o.o_w_id = $1 AND o.o_d_id = $2 AND o.o_id = $3", # w_id, d_id, o_id
+    },
+
+    "PAYMENT": {
+        "beginWork": "BEGIN WORK",
+        "rollbackWork":"ROLLBACK WORK",
+        "commitWork":"COMMIT WORK",
+        "getWarehouse": "SELECT w_name, w_address.w_street_1, w_address.w_street_2, w_address.w_city, w_address.w_state, w_address.w_zip FROM default:bench.ch2.warehouse WHERE w_id = $1", # w_id
+        "updateWarehouseBalance": "UPDATE default:bench.ch2.warehouse SET w_ytd = w_ytd + $1 WHERE w_id = $2", # h_amount, w_id
+        "getDistrict": "SELECT d_name, d_address.d_street_1, d_address.d_street_2, d_address.d_city, d_address.d_state, d_address.d_zip FROM default:bench.ch2.district WHERE d_w_id = $1 AND d_id = $2", # w_id, d_id
+        "updateDistrictBalance": "UPDATE default:bench.ch2.district SET d_ytd = d_ytd + $1 WHERE d_w_id  = $2 AND d_id = $3", # h_amount, d_w_id, d_id
+        "getCustomerByCustomerId": "SELECT c_id, c_name.c_first, c_name.c_middle, c_name.c_last, ca.c_street_1, ca.c_street_2, ca.c_city, ca.c_state, ca.c_zip, cp.c_phone_number, c_since, c_credit, c_credit_lim, c_discount, c_balance, c_ytd_payment, c_payment_cnt, c_data FROM default:bench.ch2.customer AS c UNNEST c.c_addresses AS ca UNNEST c.c_phones AS cp USE KEYS [(to_string($1) || '.' ||  to_string($2) || '.' ||  to_string($3))] WHERE ca.c_address_kind = 'shipping' AND cp.cp_phone_kind = 'mobile'", # w_id, d_id, c_id
+        "getCustomersByLastName": "SELECT c_id, c_name.c_first, c_name.c_middle, c_name.c_last, ca.c_street_1, ca.c_street_2, ca.c_city, ca.c_state, ca.c_zip, cp.c_phone_number, c_since, c_credit, c_credit_lim, c_discount, c_balance, c_ytd_payment, c_payment_cnt, c_data FROM default:bench.ch2.customer WHERE ca.c_address_kind = 'shipping' AND cp.cp_phone_kind = 'mobile' AND c_w_id = $1 AND c_d_id = $2 AND c_last = $3 ORDER BY c_first", # w_id, d_id, c_last
+        "updateBCCustomer": "UPDATE default:bench.ch2.customer USE KEYS [(to_string($6) || '.' ||  to_string($6) || '.' ||  to_string($7)) ] SET c_balance = $1, c_ytd_payment = $2, c_payment_cnt = $3, c_data = $4 ", # c_balance, c_ytd_payment, c_payment_cnt, c_data, c_w_id, c_d_id, c_id
+        "updateGCCustomer": "UPDATE default:bench.ch2.customer USE KEYS [(to_string($4) || '.' ||  to_string($5) || '.' ||  to_string($6)) ] SET c_balance = $1, c_ytd_payment = $2, c_payment_cnt = $3 ", # c_balance, c_ytd_payment, c_payment_cnt, c_w_id, c_d_id, c_id
+        "insertHistory": "INSERT INTO default:bench.ch2.history(KEY, VALUE) VALUES (TO_STRING($6), {\\\"h_c_id\\\":$1, \\\"h_c_d_id\\\":$2, \\\"h_c_w_id\\\":$3, \\\"h_d_id\\\":$4, \\\"h_w_id\\\":$5, \\\"h_date\\\":$6, \\\"h_amount\\\":$7, \\\"h_data\\\":$8})"
+    },
+
+    "STOCK_LEVEL": {
+        "getOId": "SELECT d_next_o_id FROM default:bench.ch2.district WHERE d_w_id = $1 AND d_id = $2",
+          "getStockCount": " SELECT COUNT(DISTINCT(ol.ol_i_id)) AS cnt_ol_i_id FROM default:bench.ch2.orders o UNNEST o.o_orderline ol INNER JOIN bench.ch2.stock s ON KEYS (TO_STRING(o.o_w_id) || '.' ||  TO_STRING(ol.ol_i_id)) WHERE o.o_w_id = $1 AND o.o_d_id = $2 AND o.o_id < $3 AND o.o_id >= $4 AND s.s_quantity < $6 "
     },
 }
 
@@ -280,6 +332,161 @@ TABLE_COLUMNS = {
         "r_comment", # VARCHAR
     ],
 }
+
+CH2PP_TABLE_COLUMNS = {
+    constants.TABLENAME_ITEM: [
+        "i_id", # INTEGER
+        "i_name", # VARCHAR
+        "i_price", # FLOAT
+        "i_extra", # Extra unused fields
+        "i_categories", # ARRAY
+        "i_data", # VARCHAR
+        "i_im_id", # INTEGER
+    ],
+    constants.TABLENAME_WAREHOUSE: [
+        "w_id", # SMALLINT
+        "w_ytd", # FLOAT
+        "w_tax", # FLOAT
+        "w_name", # VARCHAR
+        "w_address", # JSON
+    ],
+    constants.TABLENAME_DISTRICT: [
+        "d_id", # TINYINT
+        "d_w_id", # SMALLINT
+        "d_ytd", # FLOAT
+        "d_tax", # FLOAT
+        "d_next_o_id", # INT
+        "d_name", # VARCHAR
+        "d_address", # JSON
+    ],
+    constants.TABLENAME_CUSTOMER:   [
+        "c_id", # INTEGER
+        "c_d_id", # TINYINT
+        "c_w_id", # SMALLINT
+        "c_discount", # FLOAT
+        "c_credit", # VARCHAR
+        "c_name", # JSON OBJECT
+        "c_credit_lim", # FLOAT
+        "c_balance", # FLOAT
+        "c_ytd_payment", # FLOAT
+        "c_payment_cnt", # INTEGER
+        "c_delivery_cnt", # INTEGER
+        "c_extra", # Extra unused fields
+        "c_addresses", # ARRAY
+        "c_phones", # ARRAY
+        "c_since", # TIMESTAMP
+        "c_item_categories", # ARRAY
+        "c_data", # VARCHAR
+    ],
+    constants.TABLENAME_STOCK:      [
+        "s_i_id", # INTEGER
+        "s_w_id", # SMALLINT
+        "s_quantity", # INTEGER
+        "s_ytd", # INTEGER
+        "s_order_cnt", # INTEGER
+        "s_remote_cnt", # INTEGER
+        "s_data", # VARCHAR
+        "s_dists", # ARRAY
+    ],
+    constants.TABLENAME_ORDERS:     [
+        "o_id", # INTEGER
+        "o_c_id", # INTEGER
+        "o_d_id", # TINYINT
+        "o_w_id", # SMALLINT
+        "o_carrier_id", # INTEGER
+        "o_ol_cnt", # INTEGER
+        "o_all_local", # INTEGER
+        "o_entry_d", # TIMESTAMP
+        "o_extra", # Extra unused fields
+        "o_orderline", # ARRAY
+    ],
+    constants.TABLENAME_NEWORDER:  [
+        "no_o_id", # INTEGER
+        "no_d_id", # TINYINT
+        "no_w_id", # SMALLINT
+    ],
+    constants.TABLENAME_ORDERLINE: [
+#        "ol_o_id", # INTEGER
+#        "ol_d_id", # TINYINT
+#        "ol_w_id", # SMALLINT
+        "ol_number", # INTEGER
+        "ol_i_id", # INTEGER
+        "ol_delivery_d", # TIMESTAMP
+        "ol_amount", # FLOAT
+        "ol_supply_w_id", # SMALLINT
+        "ol_quantity", # INTEGER
+        "ol_dist_info", # VARCHAR
+    ],
+    constants.TABLENAME_HISTORY:    [
+        "h_c_id", # INTEGER
+        "h_c_d_id", # TINYINT
+        "h_c_w_id", # SMALLINT
+        "h_d_id", # TINYINT
+        "h_w_id", # SMALLINT
+        "h_date", # TIMESTAMP
+        "h_amount", # FLOAT
+        "h_data", # VARCHAR
+    ],
+    constants.TABLENAME_SUPPLIER:    [
+        "su_suppkey", # INTEGER
+        "su_name", # VARCHAR
+        "su_address", # JSON
+        "su_nationkey", # INTEGER
+        "su_phone", # VARCHAR
+        "su_acctbal", # FLOAT
+        "su_comment", # VARCHAR
+    ],
+    constants.TABLENAME_NATION:    [
+        "n_nationkey", # INTEGER
+        "n_name", # VARCHAR
+        "n_regionkey", # INTEGER
+        "n_comment", # VARCHAR
+    ],
+    constants.TABLENAME_REGION:    [
+        "r_regionkey", # INTEGER
+        "r_name", # VARCHAR
+        "r_comment", # VARCHAR
+    ],
+    constants.TABLENAME_WAREHOUSE_ADDRESS:    [
+        "w_street_1", # VARCHAR
+        "w_street_2", # VARCHAR
+        "w_city", # VARCHAR
+        "w_state", # VARCHAR
+        "w_zip", # VARCHAR
+    ],
+    constants.TABLENAME_DISTRICT_ADDRESS:    [
+        "d_street_1", # VARCHAR
+        "d_street_2", # VARCHAR
+        "d_city", # VARCHAR
+        "d_state", # VARCHAR
+        "d_zip", # VARCHAR
+    ],
+    constants.TABLENAME_CUSTOMER_NAME:    [
+        "c_last", # VARCHAR
+        "c_first", # VARCHAR
+        "c_middle", # VARCHAR
+    ],
+    constants.TABLENAME_CUSTOMER_ADDRESSES:    [
+        "c_address_kind", # VARCHAR
+        "c_street_1", # VARCHAR
+        "c_street_2", # VARCHAR
+        "c_city", # VARCHAR
+        "c_state", # VARCHAR
+        "c_zip", # VARCHAR
+    ],
+    constants.TABLENAME_CUSTOMER_PHONES:    [
+        "c_phone_kind", # VARCHAR
+        "c_phone_number", # VARCHAR
+    ],
+    constants.TABLENAME_SUPPLIER_ADDRESS:    [
+        "su_street_1", # VARCHAR
+        "su_street_2", # VARCHAR
+        "su_city", # VARCHAR
+        "su_state", # VARCHAR
+        "su_zip", # VARCHAR
+    ],
+}
+
 TABLE_INDEXES = {
     constants.TABLENAME_ITEM: [
         "i_id",
@@ -513,6 +720,11 @@ class NestcollectionsDriver(AbstractDriver):
     }
 
     def __init__(self, ddl, clientId, TAFlag="T",
+                 schema=constants.CH2_DRIVER_SCHEMA["CH2"],
+                 analyticalQueries=constants.CH2_DRIVER_ANALYTICAL_QUERIES["HAND_OPTIMIZED_QUERIES"],
+                 customerExtraFields=constants.CH2PP_CUSTOMER_EXTRA_FIELDS,
+                 ordersExtraFields=constants.CH2PP_ORDERS_EXTRA_FIELDS,
+                 itemExtraFields=constants.CH2PP_ITEM_EXTRA_FIELDS,
                  load_mode=constants.CH2_DRIVER_LOAD_MODE["NOT_SET"],
                  kv_timeout=constants.CH2_DRIVER_KV_TIMEOUT,
                  bulkload_batch_size=constants.CH2_DRIVER_BULKLOAD_BATCH_SIZE):
@@ -529,7 +741,12 @@ class NestcollectionsDriver(AbstractDriver):
         self.analytics_node = ANALYTICS_URL
         self.client_id = clientId
         self.TAFlag = TAFlag
+        self.schema = schema
+        self.analyticalQueries = analyticalQueries
         self.load_mode = load_mode
+        self.customerExtraFields = customerExtraFields
+        self.ordersExtraFields = ordersExtraFields
+        self.itemExtraFields = itemExtraFields
         self.kv_timeout = kv_timeout
         self.bulkload_batch_size = bulkload_batch_size
         if len(self.MULTI_QUERY_LIST) > 1 and clientId >= 0:
@@ -557,7 +774,7 @@ class NestcollectionsDriver(AbstractDriver):
                 cert_reqs="CERT_NONE",
                 socket_options=[  # Set TCP keep-alive options for long running analytics queries
                     (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),
-                    (socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 120),
+#                    (socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 120),
                     (socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 30),
                     (socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 20),
                 ],
@@ -571,17 +788,21 @@ class NestcollectionsDriver(AbstractDriver):
             return
 
         if TAFlag == "T":
-            for txn in TXN_QUERIES:
-                for query in TXN_QUERIES[txn]:
+            if self.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
+                self.txnQueries = TXN_QUERIES
+            else:
+                self.txnQueries = CH2PP_TXN_QUERIES
+            for txn, queries in self.txnQueries.items():
+                for query, statement in queries.items():
                     if query == "getStockInfo":
                         for i in range(1,11):
-                            converted_district = TXN_QUERIES[txn][query] % i
+                            converted_district = statement % i
                             prepare_query = "PREPARE %s_%s_%s " % (txn, i, query) + "FROM %s" % converted_district
                             stmt = json.loads('{"statement" : "' + str(prepare_query) + '"}')
                             body = n1ql_execute(self.query_node, stmt)
                             prepared_dict[txn + str(i) + query] = body['results'][0]['name']
                     else:
-                        prepare_query = "PREPARE %s_%s " % (txn, query) + "FROM %s" % TXN_QUERIES[txn][query]
+                        prepare_query = "PREPARE %s_%s " % (txn, query) + "FROM %s" % statement
                         stmt = json.loads('{"statement" : "' + str(prepare_query) + '"}')
                         body = n1ql_execute(self.query_node, stmt)
                         prepared_dict[txn + query] = body['results'][0]['name']
@@ -714,79 +935,122 @@ class NestcollectionsDriver(AbstractDriver):
         return
 
     def getOneDoc(self, tableName, tuple, denorm):
-         columns = TABLE_COLUMNS[tableName]
+        if self.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
+            return self.getOneCH2Doc(tableName, tuple, denorm)
+        else:
+            return self.getOneCH2PPDoc(tableName, tuple, denorm)
 
-         key = ""
-         if denorm:
-             for l, k in enumerate(KEYNAMES[tableName]):
-                 if l == 0:
-                     key = str(tuple[columns[k]])
-                 else:
-                     key = key + '.' + str(tuple[columns[k]])
-             val = tuple
-         else:
-             for l, k in enumerate(KEYNAMES[tableName]):
-                 if l == 0:
-                     key = str(tuple[k])
-                 else:
-                     key = key + '.' + str(tuple[k])
-             val = {}
-             for l, v in enumerate(tuple):
-                 v1 = tuple[l]
-                 if tableName == constants.TABLENAME_ORDERS and columns[l] == "o_orderline":
-                     v1 = []
-                     for olv in v:
-                         v1.append(self.genOrderLine(olv))
-                 elif isinstance(v1,(datetime)):
-                     v1 = str(v1)
-                 val[columns[l]] = v1
+    def getOneCH2Doc(self, tableName, tuple, denorm):
+        columns = TABLE_COLUMNS[tableName]
+        key = ""
+        if denorm:
+            for l, k in enumerate(KEYNAMES[tableName]):
+                if l == 0:
+                    key = str(tuple[columns[k]])
+                else:
+                    key = key + '.' + str(tuple[columns[k]])
+            val = tuple
+        else:
+            for l, k in enumerate(KEYNAMES[tableName]):
+                if l == 0:
+                    key = str(tuple[k])
+                else:
+                    key = key + '.' + str(tuple[k])
+            val = {}
+            for l, v in enumerate(tuple):
+                v1 = tuple[l]
+                if tableName == constants.TABLENAME_ORDERS and columns[l] == "o_orderline":
+                    v1 = []
+                    for olv in v:
+                        v1.append(self.genNestedTuple(olv, constants.TABLENAME_ORDERLINE))
 
-         return key, val
+                elif isinstance(v1,(datetime)):
+                    v1 = str(v1)
+                val[columns[l]] = v1
 
-    def loadOneDoc(self, tableName, tuple, denorm):
-         columns = TABLE_COLUMNS[tableName]
-         fullTableName = tableName
-         args = []
-         args.append(fullTableName)
-         args.append("")
-         args.append("")
-         args.append({})
-         key = ""
-         if denorm:
-             for l, k in enumerate(KEYNAMES[tableName]):
-                 if l == 0:
-                     key = str(tuple[columns[k]])
-                 else:
-                     key = key + '.' + str(tuple[columns[k]])
-             val = tuple
-         else:
-             for l, k in enumerate(KEYNAMES[tableName]):
-                 if l == 0:
-                     key = str(tuple[k])
-                 else:
-                     key = key + '.' + str(tuple[k])
-             val = {}
-             for l, v in enumerate(tuple):
-                 v1 = tuple[l]
-                 if tableName == constants.TABLENAME_ORDERS and columns[l] == "o_orderline":
-                     v1 = []
-                     for olv in v:
-                         v1.append(self.genOrderLine(olv))
-                 elif isinstance(v1,(datetime)):
-                     v1 = str(v1)
-                 val[columns[l]] = v1
+        return key, val
 
-         args[1] = key
-         args[2] = val
-         doQueryParam("__upsert", args, "", self.query_node)
+    def getOneCH2PPDoc(self, tableName, tuple, denorm):
+        columns = CH2PP_TABLE_COLUMNS[tableName]
+        key = ""
+        if denorm:
+            for l, k in enumerate(KEYNAMES[tableName]):
+                if l == 0:
+                    key = str(tuple[columns[k]])
+                else:
+                    key = key + '.' + str(tuple[columns[k]])
+            val = tuple
+        else:
+            for l, k in enumerate(KEYNAMES[tableName]):
+                if l == 0:
+                    key = str(tuple[k])
+                else:
+                    key = key + '.' + str(tuple[k])
+            val = {}
+            for l, v in enumerate(tuple):
+                v1 = tuple[l]
+                if isinstance(v1,(datetime)):
+                    v1 = str(v1)
+                elif tableName == constants.TABLENAME_ORDERS and columns[l] == "o_orderline":
+                    v1 = []
+                    for olv in v:
+                        v1.append(self.genNestedTuple(olv, constants.TABLENAME_ORDERLINE))
+                elif (self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"] or
+                      self.schema == constants.CH2_DRIVER_SCHEMA["CH2PP"]):
+                    if (self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"] and
+                        (tableName == constants.TABLENAME_ITEM and columns[l] == "i_categories" or
+                         tableName == constants.TABLENAME_CUSTOMER and columns[l] == "c_item_categories")):
+                        continue
 
-    def genOrderLine(self, tuple):
-        ol_columns = TABLE_COLUMNS[constants.TABLENAME_ORDERLINE]
+                    elif tableName == constants.TABLENAME_WAREHOUSE and columns[l] == "w_address":
+                        v1 = self.genNestedTuple(v, constants.TABLENAME_WAREHOUSE_ADDRESS)
+                    elif tableName == constants.TABLENAME_DISTRICT and columns[l] == "d_address":
+                        v1 = self.genNestedTuple(v, constants.TABLENAME_DISTRICT_ADDRESS)
+                    elif tableName == constants.TABLENAME_SUPPLIER and columns[l] == "su_address":
+                        v1 = self.genNestedTuple(v, constants.TABLENAME_SUPPLIER_ADDRESS)
+                    elif tableName == constants.TABLENAME_CUSTOMER:
+                        if columns[l] == "c_name":
+                            v1 = self.genNestedTuple(v, constants.TABLENAME_CUSTOMER_NAME)
+                        elif columns[l] == "c_extra":
+                            if self.schema == constants.CH2_DRIVER_SCHEMA["CH2PP"]:
+                                for i in range(0, self.customerExtraFields):
+                                    val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                            continue
+                        elif columns[l] == "c_addresses":
+                           v1 = []
+                           for clv in v:
+                               v1.append(self.genNestedTuple(clv, constants.TABLENAME_CUSTOMER_ADDRESSES))
+                               if self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"]:
+                                   break # Load only one customer address for CH2P
+                        elif columns[l] == "c_phones":
+                            v1 = []
+                            for clv in v:
+                                v1.append(self.genNestedTuple(clv, constants.TABLENAME_CUSTOMER_PHONES))
+                                if self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"]:
+                                    break # Load only one customer phone for CH2P
+                    elif tableName == constants.TABLENAME_ORDERS and columns[l] == "o_extra":
+                        if self.schema == constants.CH2_DRIVER_SCHEMA["CH2PP"]:
+                            for i in range(0, self.ordersExtraFields):
+                                val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                        continue
+                    elif tableName == constants.TABLENAME_ITEM and columns[l] == "i_extra":
+                        if self.schema == constants.CH2_DRIVER_SCHEMA["CH2PP"]:
+                            for i in range(0, self.itemExtraFields):
+                                val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                        continue
+                val[columns[l]] = v1
+        return key, val
+
+    def genNestedTuple(self, tuple, tableName):
+        if self.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
+            columns = TABLE_COLUMNS[tableName]
+        else:
+            columns = CH2PP_TABLE_COLUMNS[tableName]
         rval = {}
         for l, v in enumerate(tuple):
-             if isinstance(v,(datetime)):
-                 v = str(v)
-             rval[ol_columns[l]] = v
+            if isinstance(v,(datetime)):
+                v = str(v)
+            rval[columns[l]] = v
         return rval
 
     ## ----------------------------------------------
@@ -808,13 +1072,12 @@ class NestcollectionsDriver(AbstractDriver):
     ## doDelivery
     ## ----------------------------------------------
     def doDelivery(self, params):
-
         self.tx_status = ""
         randomhost = self.query_node
 
         # print ("Entering doDelivery")
         txn = "DELIVERY"
-        q = TXN_QUERIES[txn]
+        q = self.txnQueries[txn]
         w_id = params["w_id"]
         o_carrier_id = params["o_carrier_id"]
         ol_delivery_d = params["ol_delivery_d"]
@@ -879,7 +1142,7 @@ class NestcollectionsDriver(AbstractDriver):
 
         # print "Entering doNewOrder"
         txn = "NEW_ORDER"
-        q = TXN_QUERIES[txn]
+        q = self.txnQueries[txn]
         d_next_o_id = 0
         w_id = params["w_id"]
         d_id = params["d_id"]
@@ -995,12 +1258,16 @@ class NestcollectionsDriver(AbstractDriver):
             s_order_cnt = stockInfo[0]["s_order_cnt"]
             s_remote_cnt = stockInfo[0]["s_remote_cnt"]
             s_data = stockInfo[0]["s_data"]
-            distxx = "s_dist_" + str(d_id).zfill(2)
+
+            if self.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
+                distxx = "s_dist_" + str(d_id).zfill(2)
+                s_dist_xx = stockInfo[0][distxx] # Fetches data from the s_dist_[d_id] column
+            else:
+                s_dists = stockInfo[0]["sdists"] # Fetches data from the s_dist_[d_id] column
+                s_dist_xx = s_dists[d_id]
             # print "NewOrder Stage #4.01"
             # print distxx
             # print stockInfo[0][distxx]
-            s_dist_xx = stockInfo[0][distxx] # Fetches data from the s_dist_[d_id] column
-
             # print "NewOrder Stage #4.1"
             ## Update stock
             s_ytd += ol_quantity
@@ -1057,7 +1324,7 @@ class NestcollectionsDriver(AbstractDriver):
 
 #       print ("Entering doOrderStatus")
         txn = "ORDER_STATUS"
-        q = TXN_QUERIES[txn]
+        q = self.txnQueries[txn]
         w_id = params["w_id"]
         d_id = params["d_id"]
         c_id = params["c_id"]
@@ -1115,7 +1382,7 @@ class NestcollectionsDriver(AbstractDriver):
         randomhost = self.query_node
 
         txn = "PAYMENT"
-        q = TXN_QUERIES[txn]
+        q = self.txnQueries[txn]
         w_id = params["w_id"]
         d_id = params["d_id"]
         h_amount = params["h_amount"]
@@ -1237,7 +1504,7 @@ class NestcollectionsDriver(AbstractDriver):
 
         # print "Entering doStockLevel"
         txn = "STOCK_LEVEL"
-        q = TXN_QUERIES[txn]
+        q = self.txnQueries[txn]
 
         w_id = params["w_id"]
         d_id = params["d_id"]
@@ -1270,12 +1537,25 @@ class NestcollectionsDriver(AbstractDriver):
             # good randomness for different clients and different query iterations.
             #random.seed(self.client_id*9973 + queryIterNum*19997)
             #random.shuffle(ch2_queries_perm)
+            #logging.info(f"{self.schema=}")
+            #logging.info(f"{self.analyticalQueries=}")
+
             ch2_queries_perm = constants.CH2_QUERIES_PERM[self.client_id]
-            ch2_queries = (
-                constants.CH2_QUERIES_NON_OPTIMIZED
-                if bool(int(os.environ.get("UNOPTIMIZED_QUERIES", 0)))
-                else constants.CH2_QUERIES
-            )
+            if self.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
+                if self.analyticalQueries == constants.CH2_DRIVER_ANALYTICAL_QUERIES["HAND_OPTIMIZED_QUERIES"]:
+                    #logging.info("Using hand optimized CH2 queries")
+                    ch2_queries = constants.CH2_QUERIES
+                else:
+                    #logging.info("Using non-optimized CH2 queries")
+                    ch2_queries = constants.CH2_QUERIES_NON_OPTIMIZED
+            else:
+                if self.analyticalQueries == constants.CH2_DRIVER_ANALYTICAL_QUERIES["HAND_OPTIMIZED_QUERIES"]:
+                    #logging.info("Using hand optimized CH2++ queries")
+                    ch2_queries = constants.CH2PP_QUERIES
+                else:
+                    #logging.info("Using non-optimized CH2++ queries")
+                    ch2_queries = constants.CH2PP_QUERIES_NON_OPTIMIZED
+
             if bool(int(os.environ.get("IGNORE_SKIP_INDEX_HINTS", 0))):
                 pattern = re.compile(r"\/\*\+\sskip-index\s\*\/")
                 ch2_queries = {
@@ -1319,3 +1599,4 @@ class NestcollectionsDriver(AbstractDriver):
                 ]
         return qry_times
 ## CLASS
+
