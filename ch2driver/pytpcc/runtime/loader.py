@@ -734,7 +734,7 @@ class Loader:
         """
             Returns customer addresses
         """
-        c_addresses = [["shipping",  self.generateStreetAddress()]]
+        c_addresses = [["shipping"] + self.generateStreetAddress()]
         c_other_addr_type = ["home", "work", "billing"]
         c_other_addr = np.random.choice(c_other_addr_type, size=np.random.randint(0, 4), replace=False)
         for coa in c_other_addr:
@@ -750,11 +750,11 @@ class Loader:
         """
             Returns customer phones
         """
-        c_phones = [["contact", [rand.nstring(constants.PHONE, constants.PHONE)]]]
+        c_phones = [["contact"] + [rand.nstring(constants.PHONE, constants.PHONE)]]
         c_other_phone_type = ["home", "work", "mobile"]
         c_other_phone = np.random.choice(c_other_phone_type, size=np.random.randint(0, 4), replace=False)
         for cop in c_other_phone:
-            c_phones.append([cop,  [rand.nstring(constants.PHONE, constants.PHONE)]])
+            c_phones.append([cop] + [rand.nstring(constants.PHONE, constants.PHONE)])
         return c_phones
     ## DEF
 
