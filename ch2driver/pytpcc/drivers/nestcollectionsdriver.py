@@ -995,49 +995,46 @@ class NestcollectionsDriver(AbstractDriver):
                     v1 = []
                     for olv in v:
                         v1.append(self.genNestedTuple(olv, constants.TABLENAME_ORDERLINE))
-                elif (self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"] or
-                      self.schema == constants.CH2_DRIVER_SCHEMA["CH2PP"]):
-                    if (self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"] and
-                        (tableName == constants.TABLENAME_ITEM and columns[l] == "i_categories" or
-                         tableName == constants.TABLENAME_CUSTOMER and columns[l] == "c_item_categories")):
-                        continue
-
-                    elif tableName == constants.TABLENAME_WAREHOUSE and columns[l] == "w_address":
-                        v1 = self.genNestedTuple(v, constants.TABLENAME_WAREHOUSE_ADDRESS)
-                    elif tableName == constants.TABLENAME_DISTRICT and columns[l] == "d_address":
-                        v1 = self.genNestedTuple(v, constants.TABLENAME_DISTRICT_ADDRESS)
-                    elif tableName == constants.TABLENAME_SUPPLIER and columns[l] == "su_address":
-                        v1 = self.genNestedTuple(v, constants.TABLENAME_SUPPLIER_ADDRESS)
-                    elif tableName == constants.TABLENAME_CUSTOMER:
-                        if columns[l] == "c_name":
-                            v1 = self.genNestedTuple(v, constants.TABLENAME_CUSTOMER_NAME)
-                        elif columns[l] == "c_extra":
-                            if self.schema == constants.CH2_DRIVER_SCHEMA["CH2PP"]:
-                                for i in range(0, self.customerExtraFields):
-                                    val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
-                            continue
-                        elif columns[l] == "c_addresses":
-                           v1 = []
-                           for clv in v:
-                               v1.append(self.genNestedTuple(clv, constants.TABLENAME_CUSTOMER_ADDRESSES))
-                               if self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"]:
-                                   break # Load only one customer address for CH2P
-                        elif columns[l] == "c_phones":
-                            v1 = []
-                            for clv in v:
-                                v1.append(self.genNestedTuple(clv, constants.TABLENAME_CUSTOMER_PHONES))
-                                if self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"]:
-                                    break # Load only one customer phone for CH2P
-                    elif tableName == constants.TABLENAME_ORDERS and columns[l] == "o_extra":
+                elif (self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"] and
+                    (tableName == constants.TABLENAME_ITEM and columns[l] == "i_categories" or
+                     tableName == constants.TABLENAME_CUSTOMER and columns[l] == "c_item_categories")):
+                    continue
+                elif tableName == constants.TABLENAME_WAREHOUSE and columns[l] == "w_address":
+                    v1 = self.genNestedTuple(v, constants.TABLENAME_WAREHOUSE_ADDRESS)
+                elif tableName == constants.TABLENAME_DISTRICT and columns[l] == "d_address":
+                    v1 = self.genNestedTuple(v, constants.TABLENAME_DISTRICT_ADDRESS)
+                elif tableName == constants.TABLENAME_SUPPLIER and columns[l] == "su_address":
+                    v1 = self.genNestedTuple(v, constants.TABLENAME_SUPPLIER_ADDRESS)
+                elif tableName == constants.TABLENAME_CUSTOMER:
+                    if columns[l] == "c_name":
+                        v1 = self.genNestedTuple(v, constants.TABLENAME_CUSTOMER_NAME)
+                    elif columns[l] == "c_extra":
                         if self.schema == constants.CH2_DRIVER_SCHEMA["CH2PP"]:
-                            for i in range(0, self.ordersExtraFields):
+                            for i in range(0, self.customerExtraFields):
                                 val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
                         continue
-                    elif tableName == constants.TABLENAME_ITEM and columns[l] == "i_extra":
-                        if self.schema == constants.CH2_DRIVER_SCHEMA["CH2PP"]:
-                            for i in range(0, self.itemExtraFields):
-                                val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
-                        continue
+                    elif columns[l] == "c_addresses":
+                        v1 = []
+                        for clv in v:
+                            v1.append(self.genNestedTuple(clv, constants.TABLENAME_CUSTOMER_ADDRESSES))
+                            if self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"]:
+                                break # Load only one customer address for CH2P
+                    elif columns[l] == "c_phones":
+                        v1 = []
+                        for clv in v:
+                            v1.append(self.genNestedTuple(clv, constants.TABLENAME_CUSTOMER_PHONES))
+                            if self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"]:
+                                break # Load only one customer phone for CH2P
+                elif tableName == constants.TABLENAME_ORDERS and columns[l] == "o_extra":
+                    if self.schema == constants.CH2_DRIVER_SCHEMA["CH2PP"]:
+                        for i in range(0, self.ordersExtraFields):
+                            val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                    continue
+                elif tableName == constants.TABLENAME_ITEM and columns[l] == "i_extra":
+                    if self.schema == constants.CH2_DRIVER_SCHEMA["CH2PP"]:
+                        for i in range(0, self.itemExtraFields):
+                            val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                    continue
                 val[columns[l]] = v1
         return key, val
 
@@ -1543,17 +1540,13 @@ class NestcollectionsDriver(AbstractDriver):
             ch2_queries_perm = constants.CH2_QUERIES_PERM[self.client_id]
             if self.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
                 if self.analyticalQueries == constants.CH2_DRIVER_ANALYTICAL_QUERIES["HAND_OPTIMIZED_QUERIES"]:
-                    #logging.info("Using hand optimized CH2 queries")
                     ch2_queries = constants.CH2_QUERIES
                 else:
-                    #logging.info("Using non-optimized CH2 queries")
                     ch2_queries = constants.CH2_QUERIES_NON_OPTIMIZED
             else:
                 if self.analyticalQueries == constants.CH2_DRIVER_ANALYTICAL_QUERIES["HAND_OPTIMIZED_QUERIES"]:
-                    #logging.info("Using hand optimized CH2++ queries")
                     ch2_queries = constants.CH2PP_QUERIES
                 else:
-                    #logging.info("Using non-optimized CH2++ queries")
                     ch2_queries = constants.CH2PP_QUERIES_NON_OPTIMIZED
 
             if bool(int(os.environ.get("IGNORE_SKIP_INDEX_HINTS", 0))):
@@ -1599,3 +1592,4 @@ class NestcollectionsDriver(AbstractDriver):
                 ]
         return qry_times
 ## CLASS
+
