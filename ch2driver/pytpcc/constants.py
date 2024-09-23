@@ -1441,7 +1441,7 @@ CH2PP_QUERIES_NON_OPTIMIZED = {
              "AND  c.c_id = o.o_c_id "
              "AND  c.c_w_id = o.o_w_id "
              "AND  c.c_d_id = o.o_d_id "
-             "AND c a.c_address_kind = 'shipping' "
+             "AND  ca.c_address_kind = 'shipping' "
              "AND  n1.n_nationkey = string_to_codepoint(ca.c_state)[0] "
              "AND  n1.n_regionkey = r.r_regionkey "
              "AND  ol.ol_i_id < 1000 "
@@ -1665,7 +1665,7 @@ CH2PP_QUERIES_NON_OPTIMIZED = {
     # greater than average balance on their account. The county code is represented
     # by the first two characters of the phone number.
     "Q22": "SELECT SUBSTR1(ca.c_state,1,1) AS country, COUNT(*) AS numcust, SUM(c.c_balance) AS totacctbal "
-           "FROM customer c, c.c_addresses ca, c.c_phones cp"
+           "FROM customer c, c.c_addresses ca, c.c_phones cp "
            "WHERE SUBSTR1(cp.c_phone_number,1,1) IN ['1','2','3','4','5','6','7'] "
              "AND   ca.c_address_kind = 'shipping' "
              "AND   cp.c_phone_kind = 'mobile' "
