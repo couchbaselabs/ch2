@@ -774,7 +774,7 @@ CH2PP_QUERIES = {
              "AND  o.o_entry_d >= '2015-10-01 00:00:00.000000' "\
              "AND o.o_entry_d < '2016-01-01 00:00:00.000000' "\
              "AND  ca.c_address_kind = 'shipping' "\
-	     "AND  cp.c_phone_kind = 'mobile' "\
+	     "AND  cp.c_phone_kind = 'contact' "\
              "AND  n.n_nationkey = string_to_codepoint(ca.c_state)[0] "\
             "GROUP BY c.c_id, c.c_name.c_last, ca.c_city, cp.c_phone_number, n.n_name "\
             "ORDER BY revenue DESC "\
@@ -931,11 +931,11 @@ CH2PP_QUERIES = {
            "FROM customer c, c.c_addresses ca, c.c_phones cp "\
            "WHERE SUBSTR1(cp.c_phone_number,1,1) IN ['1','2','3','4','5','6','7'] "\
              "AND  ca.c_address_kind = 'shipping' "\
-             "AND  cp.c_phone_kind = 'mobile' "\
+             "AND  cp.c_phone_kind = 'contact' "\
              "AND c.c_balance > (SELECT VALUE AVG(c1.c_balance) "\
                                 "FROM customer c1, c1.c_phones cp1 "\
                                 "WHERE c1.c_balance > 0.00 "\
-                                  "AND  cp1.c_phone_kind = 'mobile' "\
+                                  "AND  cp1.c_phone_kind = 'contact' "\
                                   "AND SUBSTR1(cp1.c_phone_number,1,1) IN ['1','2','3','4','5','6','7'])[0] "\
              "AND NOT EXISTS (SELECT VALUE 1 "\
                              "FROM orders o "\
@@ -1478,7 +1478,7 @@ CH2PP_QUERIES_NON_OPTIMIZED = {
              "AND  o.o_entry_d >= '2015-10-01 00:00:00.000000' "
              "AND  o.o_entry_d < '2016-01-01 00:00:00.000000' "
              "AND  ca.c_address_kind = 'shipping' "
-             "AND  cp.c_phone_kind = 'mobile' "
+             "AND  cp.c_phone_kind = 'contact' "
              "AND  n.n_nationkey = string_to_codepoint(ca.c_state)[0] "
            "GROUP BY c.c_id, c.c_name.c_last, ca.c_city, cp.c_phone_number, n.n_name "
            "ORDER BY revenue DESC "
@@ -1668,11 +1668,11 @@ CH2PP_QUERIES_NON_OPTIMIZED = {
            "FROM customer c, c.c_addresses ca, c.c_phones cp "
            "WHERE SUBSTR1(cp.c_phone_number,1,1) IN ['1','2','3','4','5','6','7'] "
              "AND   ca.c_address_kind = 'shipping' "
-             "AND   cp.c_phone_kind = 'mobile' "
+             "AND   cp.c_phone_kind = 'contact' "
              "AND c.c_balance > (SELECT VALUE AVG(c1.c_balance) "
                                 "FROM customer c1, c1.c_phones cp1 "
                                 "WHERE c1.c_balance > 0.00 "
-                                  "AND cp1.c_phone_kind = 'mobile' "
+                                  "AND cp1.c_phone_kind = 'contact' "
                                   "AND SUBSTR1(cp1.c_phone_number,1,1) IN ['1','2','3','4','5','6','7'])[0] "
              "AND NOT EXISTS (SELECT VALUE 1 "
                              "FROM orders o "
