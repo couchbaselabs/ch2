@@ -254,6 +254,7 @@ if __name__ == '__main__':
     aparser.add_argument('--qrysvc-load', action='store_true',
                          help='Enable loading the data through the query service')
     aparser.add_argument('--ch2p', action='store_true', help='Create CH2+ schema')
+    aparser.add_argument('--limitCustomerArraySizes', action='store_true', help='Create CH2+ schema')
     aparser.add_argument('--ch2pp', action='store_true', help='Create CH2++ schema')
     aparser.add_argument('--nonOptimizedQueries', action='store_true', help='Run the out of the box unoptimized 22 analytical CH2 queries')
     aparser.add_argument('--customerExtraFields', default=constants.CH2PP_CUSTOMER_EXTRA_FIELDS , type=int,
@@ -357,10 +358,17 @@ if __name__ == '__main__':
     bulkload_batch_size = constants.CH2_DRIVER_BULKLOAD_BATCH_SIZE
     kv_timeout = constants.CH2_DRIVER_KV_TIMEOUT
 
+    if not args['ch2p'] and args['limitCustomerArraySizes']:
+        logging.info("Can specify limit on customer array sizes only for CH2P")
+        sys.exit(0)
+
     if args['ch2p']:
         schema = constants.CH2_DRIVER_SCHEMA["CH2P"]
+        if args['limitCustomerArraySizes']:
+            schema = constants.CH2_DRIVER_SCHEMA["CH2PLIMITCUSTARRAY"]
     elif args['ch2pp']:
         schema = constants.CH2_DRIVER_SCHEMA["CH2PP"]
+
     if args['nonOptimizedQueries']:
         analyticalQueries = constants.CH2_DRIVER_ANALYTICAL_QUERIES["NON_OPTIMIZED_QUERIES"]
     customerExtraFields = args['customerExtraFields']
@@ -535,3 +543,4 @@ if __name__ == '__main__':
     ## IF
 
 ## MAIN
+
