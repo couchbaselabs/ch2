@@ -789,10 +789,10 @@ class NestcollectionsDriver(AbstractDriver):
 
         if TAFlag == "T":
             if self.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
-                self.txnQueries = TXN_QUERIES
+                txnQueries = TXN_QUERIES
             else:
-                self.txnQueries = CH2PP_TXN_QUERIES
-            for txn, queries in self.txnQueries.items():
+                txnQueries = CH2PP_TXN_QUERIES
+            for txn, queries in txnQueries.items():
                 for query, statement in queries.items():
                     if query == "getStockInfo":
                         for i in range(1,11):
@@ -1074,7 +1074,6 @@ class NestcollectionsDriver(AbstractDriver):
 
         # print ("Entering doDelivery")
         txn = "DELIVERY"
-        q = self.txnQueries[txn]
         w_id = params["w_id"]
         o_carrier_id = params["o_carrier_id"]
         ol_delivery_d = params["ol_delivery_d"]
@@ -1139,7 +1138,6 @@ class NestcollectionsDriver(AbstractDriver):
 
         # print "Entering doNewOrder"
         txn = "NEW_ORDER"
-        q = self.txnQueries[txn]
         d_next_o_id = 0
         w_id = params["w_id"]
         d_id = params["d_id"]
@@ -1321,7 +1319,6 @@ class NestcollectionsDriver(AbstractDriver):
 
 #       print ("Entering doOrderStatus")
         txn = "ORDER_STATUS"
-        q = self.txnQueries[txn]
         w_id = params["w_id"]
         d_id = params["d_id"]
         c_id = params["c_id"]
@@ -1379,7 +1376,6 @@ class NestcollectionsDriver(AbstractDriver):
         randomhost = self.query_node
 
         txn = "PAYMENT"
-        q = self.txnQueries[txn]
         w_id = params["w_id"]
         d_id = params["d_id"]
         h_amount = params["h_amount"]
@@ -1501,8 +1497,6 @@ class NestcollectionsDriver(AbstractDriver):
 
         # print "Entering doStockLevel"
         txn = "STOCK_LEVEL"
-        q = self.txnQueries[txn]
-
         w_id = params["w_id"]
         d_id = params["d_id"]
         threshold = params["threshold"]
