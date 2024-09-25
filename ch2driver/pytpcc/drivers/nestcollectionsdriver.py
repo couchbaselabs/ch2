@@ -995,7 +995,9 @@ class NestcollectionsDriver(AbstractDriver):
                     v1 = []
                     for olv in v:
                         v1.append(self.genNestedTuple(olv, constants.TABLENAME_ORDERLINE))
-                elif (self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"] and
+                elif ((self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"] or
+                       (self.schema == constants.CH2_DRIVER_SCHEMA["CH2PLIMITCUSTARRAY"]))
+                       and
                     (tableName == constants.TABLENAME_ITEM and columns[l] == "i_categories" or
                      tableName == constants.TABLENAME_CUSTOMER and columns[l] == "c_item_categories")):
                     continue
@@ -1017,14 +1019,14 @@ class NestcollectionsDriver(AbstractDriver):
                         v1 = []
                         for clv in v:
                             v1.append(self.genNestedTuple(clv, constants.TABLENAME_CUSTOMER_ADDRESSES))
-                            if self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"]:
-                                break # Load only one customer address for CH2P
+                            if self.schema == constants.CH2_DRIVER_SCHEMA["CH2PLIMITCUSTARRAY"]:
+                                break # Load only one customer address for CH2PLIMITCUSTARRAY
                     elif columns[l] == "c_phones":
                         v1 = []
                         for clv in v:
                             v1.append(self.genNestedTuple(clv, constants.TABLENAME_CUSTOMER_PHONES))
-                            if self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"]:
-                                break # Load only one customer phone for CH2P
+                            if self.schema == constants.CH2_DRIVER_SCHEMA["CH2PLIMITCUSTARRAY"]:
+                                break # Load only one customer phone for CH2PLIMITCUSTARRAY
                 elif tableName == constants.TABLENAME_ORDERS and columns[l] == "o_extra":
                     if self.schema == constants.CH2_DRIVER_SCHEMA["CH2PP"]:
                         for i in range(0, self.ordersExtraFields):
@@ -1586,4 +1588,6 @@ class NestcollectionsDriver(AbstractDriver):
                 ]
         return qry_times
 ## CLASS
+
+
 
