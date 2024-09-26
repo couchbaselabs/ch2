@@ -36,7 +36,6 @@ import argparse
 import glob
 import time
 import multiprocessing
-from configparser import SafeConfigParser
 from pprint import pprint,pformat
 import constants
 from util import *
@@ -255,6 +254,7 @@ if __name__ == '__main__':
                          help='Enable loading the data through the query service')
     aparser.add_argument('--ch2p', action='store_true', help='Create CH2+ schema')
     aparser.add_argument('--ch2pp', action='store_true', help='Create CH2++ schema')
+    aparser.add_argument('--noExtraFields', action='store_true', help='Create CH2++ schema without the extra fields')
     aparser.add_argument('--nonOptimizedQueries', action='store_true', help='Run the out of the box unoptimized 22 analytical CH2 queries')
     aparser.add_argument('--customerExtraFields', default=constants.CH2PP_CUSTOMER_EXTRA_FIELDS , type=int,
                          help='Number of extra unused fields in Customer')
@@ -357,10 +357,17 @@ if __name__ == '__main__':
     bulkload_batch_size = constants.CH2_DRIVER_BULKLOAD_BATCH_SIZE
     kv_timeout = constants.CH2_DRIVER_KV_TIMEOUT
 
+    if not args['ch2pp'] and args['noExtraFields']:
+        logging.info("Can specify 'noExtraFields' only for CH2++")
+        sys.exit(0)
+
     if args['ch2p']:
         schema = constants.CH2_DRIVER_SCHEMA["CH2P"]
     elif args['ch2pp']:
         schema = constants.CH2_DRIVER_SCHEMA["CH2PP"]
+        if args['noExtraFields']:
+            schema = constants.CH2_DRIVER_SCHEMA["CH2PPNOEXTRAFIELDS"]
+
     if args['nonOptimizedQueries']:
         analyticalQueries = constants.CH2_DRIVER_ANALYTICAL_QUERIES["NON_OPTIMIZED_QUERIES"]
     customerExtraFields = args['customerExtraFields']
@@ -478,7 +485,7 @@ if __name__ == '__main__':
     ## Load Configuration file
     if args['config']:
         logging.debug("Loading configuration file '%s'" % args['config'])
-        cparser = SafeConfigParser()
+        cparser = ConfigParser()
         cparser.read(os.path.realpath(args['config'].name))
         config = dict(cparser.items(args['system']))
     else:
