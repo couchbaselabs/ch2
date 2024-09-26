@@ -166,8 +166,10 @@ CH2_DRIVER_LOAD_MODE = {
 CH2_DRIVER_SCHEMA = {
     "CH2":0,
     "CH2P":1,
-    "CH2PP":2
+    "CH2PP":2,
+    "CH2PPNOEXTRAFIELDS":3
 }
+
 CH2_DRIVER_ANALYTICAL_QUERIES = {
     "HAND_OPTIMIZED_QUERIES":0,
     "NON_OPTIMIZED_QUERIES":1
@@ -774,7 +776,7 @@ CH2PP_QUERIES = {
              "AND  o.o_entry_d >= '2015-10-01 00:00:00.000000' "\
              "AND o.o_entry_d < '2016-01-01 00:00:00.000000' "\
              "AND  ca.c_address_kind = 'shipping' "\
-	     "AND  cp.c_phone_kind = 'contact' "\
+	     "AND  cp.c_phone_kind = 'mobile' "\
              "AND  n.n_nationkey = string_to_codepoint(ca.c_state)[0] "\
             "GROUP BY c.c_id, c.c_name.c_last, ca.c_city, cp.c_phone_number, n.n_name "\
             "ORDER BY revenue DESC "\
@@ -931,11 +933,11 @@ CH2PP_QUERIES = {
            "FROM customer c, c.c_addresses ca, c.c_phones cp "\
            "WHERE SUBSTR1(cp.c_phone_number,1,1) IN ['1','2','3','4','5','6','7'] "\
              "AND  ca.c_address_kind = 'shipping' "\
-             "AND  cp.c_phone_kind = 'contact' "\
+             "AND  cp.c_phone_kind = 'mobile' "\
              "AND c.c_balance > (SELECT VALUE AVG(c1.c_balance) "\
                                 "FROM customer c1, c1.c_phones cp1 "\
                                 "WHERE c1.c_balance > 0.00 "\
-                                  "AND  cp1.c_phone_kind = 'contact' "\
+                                  "AND  cp1.c_phone_kind = 'mobile' "\
                                   "AND SUBSTR1(cp1.c_phone_number,1,1) IN ['1','2','3','4','5','6','7'])[0] "\
              "AND NOT EXISTS (SELECT VALUE 1 "\
                              "FROM orders o "\
@@ -1478,7 +1480,7 @@ CH2PP_QUERIES_NON_OPTIMIZED = {
              "AND  o.o_entry_d >= '2015-10-01 00:00:00.000000' "
              "AND  o.o_entry_d < '2016-01-01 00:00:00.000000' "
              "AND  ca.c_address_kind = 'shipping' "
-             "AND  cp.c_phone_kind = 'contact' "
+             "AND  cp.c_phone_kind = 'mobile' "
              "AND  n.n_nationkey = string_to_codepoint(ca.c_state)[0] "
            "GROUP BY c.c_id, c.c_name.c_last, ca.c_city, cp.c_phone_number, n.n_name "
            "ORDER BY revenue DESC "
@@ -1668,11 +1670,11 @@ CH2PP_QUERIES_NON_OPTIMIZED = {
            "FROM customer c, c.c_addresses ca, c.c_phones cp "
            "WHERE SUBSTR1(cp.c_phone_number,1,1) IN ['1','2','3','4','5','6','7'] "
              "AND   ca.c_address_kind = 'shipping' "
-             "AND   cp.c_phone_kind = 'contact' "
+             "AND   cp.c_phone_kind = 'mobile' "
              "AND c.c_balance > (SELECT VALUE AVG(c1.c_balance) "
                                 "FROM customer c1, c1.c_phones cp1 "
                                 "WHERE c1.c_balance > 0.00 "
-                                  "AND cp1.c_phone_kind = 'contact' "
+                                  "AND cp1.c_phone_kind = 'mobile' "
                                   "AND SUBSTR1(cp1.c_phone_number,1,1) IN ['1','2','3','4','5','6','7'])[0] "
              "AND NOT EXISTS (SELECT VALUE 1 "
                              "FROM orders o "
@@ -1765,4 +1767,6 @@ CH2_QUERIES_PERM = [
 
     ["Q13", "Q15", "Q17", "Q01", "Q22", "Q11", "Q03", "Q04", "Q07", "Q20", "Q14", "Q21", "Q09", "Q08", "Q02", "Q18", "Q16", "Q06", "Q10", "Q12", "Q05",  "Q19"]
 ]
+
+
 
