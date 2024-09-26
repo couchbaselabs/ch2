@@ -996,8 +996,8 @@ class NestcollectionsDriver(AbstractDriver):
                     for olv in v:
                         v1.append(self.genNestedTuple(olv, constants.TABLENAME_ORDERLINE))
                 elif (self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"] and
-                    (tableName == constants.TABLENAME_ITEM and columns[l] == "i_categories" or
-                     tableName == constants.TABLENAME_CUSTOMER and columns[l] == "c_item_categories")):
+                      (tableName == constants.TABLENAME_ITEM and columns[l] == "i_categories" or
+                       tableName == constants.TABLENAME_CUSTOMER and columns[l] == "c_item_categories")):
                     continue
                 elif tableName == constants.TABLENAME_WAREHOUSE and columns[l] == "w_address":
                     v1 = self.genNestedTuple(v, constants.TABLENAME_WAREHOUSE_ADDRESS)
@@ -1586,4 +1586,5 @@ class NestcollectionsDriver(AbstractDriver):
                 ]
         return qry_times
 ## CLASS
+
 
