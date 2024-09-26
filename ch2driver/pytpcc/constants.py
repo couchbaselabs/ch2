@@ -166,8 +166,10 @@ CH2_DRIVER_LOAD_MODE = {
 CH2_DRIVER_SCHEMA = {
     "CH2":0,
     "CH2P":1,
-    "CH2PP":2
+    "CH2PP":2,
+    "CH2PPNOEXTRAFIELDS":3
 }
+
 CH2_DRIVER_ANALYTICAL_QUERIES = {
     "HAND_OPTIMIZED_QUERIES":0,
     "NON_OPTIMIZED_QUERIES":1
@@ -1765,4 +1767,6 @@ CH2_QUERIES_PERM = [
 
     ["Q13", "Q15", "Q17", "Q01", "Q22", "Q11", "Q03", "Q04", "Q07", "Q20", "Q14", "Q21", "Q09", "Q08", "Q02", "Q18", "Q16", "Q06", "Q10", "Q12", "Q05",  "Q19"]
 ]
+
+
 
