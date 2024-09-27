@@ -36,7 +36,7 @@ import argparse
 import glob
 import time
 import multiprocessing
-from configparser import SafeConfigParser
+from configparser import ConfigParser
 from pprint import pprint,pformat
 import constants
 from util import *
@@ -76,7 +76,7 @@ def startLoading(driverClass, schema, scaleParameters, args, config, customerExt
     numClients = args['tclients'] + args['aclients']
     logging.debug("Creating client pool with %d processes" % numClients)
     pool = multiprocessing.Pool(numClients)
-    debug = logging.getLogger().isEnabledFor(logging.DEBUG)
+    debug = logging.getLoggler().isEnabledFor(logging.DEBUG)
 
     # Split the warehouses into chunks
     w_ids = list(map(lambda x: [ ], range(numClients)))
@@ -393,7 +393,7 @@ if __name__ == '__main__':
             logging.info("Cannot specify multiple types of load")
             sys.exit(0)
 
-    if not args['no_load']:
+    if not args['no_load'] and not args['system'] == "mongodb":
        if load_mode == constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]:
             logging.info("Need to specify the type of load")
             sys.exit(0)
@@ -478,7 +478,7 @@ if __name__ == '__main__':
     ## Load Configuration file
     if args['config']:
         logging.debug("Loading configuration file '%s'" % args['config'])
-        cparser = SafeConfigParser()
+        cparser = ConfigParser()
         cparser.read(os.path.realpath(args['config'].name))
         config = dict(cparser.items(args['system']))
     else:
@@ -535,3 +535,4 @@ if __name__ == '__main__':
     ## IF
 
 ## MAIN
+
