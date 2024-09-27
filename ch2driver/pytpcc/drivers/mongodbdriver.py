@@ -36,122 +36,302 @@ import sys
 import logging
 import pymongo
 from pprint import pprint,pformat
-
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
+import traceback
+import time
 import constants
-from abstractdriver import *
+from .abstractdriver import *
+NUM_LOAD_RETRIES = 10
 
 TABLE_COLUMNS = {
-    constants.TABLENAME_ITEM: [
-        "I_ID", # INTEGER
-        "I_IM_ID", # INTEGER
-        "I_NAME", # VARCHAR
-        "I_PRICE", # FLOAT
-        "I_DATA", # VARCHAR
+    constants.MONGO_TABLENAME_ITEM: [
+        "i_id", # INTEGER
+        "i_im_id", # INTEGER
+        "i_name", # VARCHAR
+        "i_price", # FLOAT
+        "i_data", # VARCHAR
     ],
-    constants.TABLENAME_WAREHOUSE: [
-        "W_ID", # SMALLINT
-        "W_NAME", # VARCHAR
-        "W_STREET_1", # VARCHAR
-        "W_STREET_2", # VARCHAR
-        "W_CITY", # VARCHAR
-        "W_STATE", # VARCHAR
-        "W_ZIP", # VARCHAR
-        "W_TAX", # FLOAT
-        "W_YTD", # FLOAT
-    ],    
-    constants.TABLENAME_DISTRICT: [
-        "D_ID", # TINYINT
-        "D_W_ID", # SMALLINT
-        "D_NAME", # VARCHAR
-        "D_STREET_1", # VARCHAR
-        "D_STREET_2", # VARCHAR
-        "D_CITY", # VARCHAR
-        "D_STATE", # VARCHAR
-        "D_ZIP", # VARCHAR
-        "D_TAX", # FLOAT
-        "D_YTD", # FLOAT
-        "D_NEXT_O_ID", # INT
+    constants.MONGO_TABLENAME_WAREHOUSE: [
+        "w_id", # SMALLINT
+        "w_name", # VARCHAR
+        "w_street_1", # VARCHAR
+        "w_street_2", # VARCHAR
+        "w_city", # VARCHAR
+        "w_state", # VARCHAR
+        "w_zip", # VARCHAR
+        "w_tax", # FLOAT
+        "w_ytd", # FLOAT
     ],
-    constants.TABLENAME_CUSTOMER:   [
-        "C_ID", # INTEGER
-        "C_D_ID", # TINYINT
-        "C_W_ID", # SMALLINT
-        "C_FIRST", # VARCHAR
-        "C_MIDDLE", # VARCHAR
-        "C_LAST", # VARCHAR
-        "C_STREET_1", # VARCHAR
-        "C_STREET_2", # VARCHAR
-        "C_CITY", # VARCHAR
-        "C_STATE", # VARCHAR
-        "C_ZIP", # VARCHAR
-        "C_PHONE", # VARCHAR
-        "C_SINCE", # TIMESTAMP
-        "C_CREDIT", # VARCHAR
-        "C_CREDIT_LIM", # FLOAT
-        "C_DISCOUNT", # FLOAT
-        "C_BALANCE", # FLOAT
-        "C_YTD_PAYMENT", # FLOAT
-        "C_PAYMENT_CNT", # INTEGER
-        "C_DELIVERY_CNT", # INTEGER
-        "C_DATA", # VARCHAR
+    constants.MONGO_TABLENAME_DISTRICT: [
+        "d_id", # TINYINT
+        "d_w_id", # SMALLINT
+        "d_name", # VARCHAR
+        "d_street_1", # VARCHAR
+        "d_street_2", # VARCHAR
+        "d_city", # VARCHAR
+        "d_state", # VARCHAR
+        "d_zip", # VARCHAR
+        "d_tax", # FLOAT
+        "d_ytd", # FLOAT
+        "d_next_o_id", # INT
     ],
-    constants.TABLENAME_STOCK:      [
-        "S_I_ID", # INTEGER
-        "S_W_ID", # SMALLINT
-        "S_QUANTITY", # INTEGER
-        "S_DIST_01", # VARCHAR
-        "S_DIST_02", # VARCHAR
-        "S_DIST_03", # VARCHAR
-        "S_DIST_04", # VARCHAR
-        "S_DIST_05", # VARCHAR
-        "S_DIST_06", # VARCHAR
-        "S_DIST_07", # VARCHAR
-        "S_DIST_08", # VARCHAR
-        "S_DIST_09", # VARCHAR
-        "S_DIST_10", # VARCHAR
-        "S_YTD", # INTEGER
-        "S_ORDER_CNT", # INTEGER
-        "S_REMOTE_CNT", # INTEGER
-        "S_DATA", # VARCHAR
+    constants.MONGO_TABLENAME_CUSTOMER:   [
+        "c_id", # INTEGER
+        "c_d_id", # TINYINT
+        "c_w_id", # SMALLINT
+        "c_first", # VARCHAR
+        "c_middle", # VARCHAR
+        "c_last", # VARCHAR
+        "c_street_1", # VARCHAR
+        "c_street_2", # VARCHAR
+        "c_city", # VARCHAR
+        "c_state", # VARCHAR
+        "c_zip", # VARCHAR
+        "c_phone", # VARCHAR
+        "c_since", # TIMESTAMP
+        "c_credit", # VARCHAR
+        "c_credit_lim", # FLOAT
+        "c_discount", # FLOAT
+        "c_balance", # FLOAT
+        "c_ytd_payment", # FLOAT
+        "c_payment_cnt", # INTEGER
+        "c_delivery_cnt", # INTEGER
+        "c_data", # VARCHAR
     ],
-    constants.TABLENAME_ORDERS:     [
-        "O_ID", # INTEGER
-        "O_C_ID", # INTEGER
-        "O_D_ID", # TINYINT
-        "O_W_ID", # SMALLINT
-        "O_ENTRY_D", # TIMESTAMP
-        "O_CARRIER_ID", # INTEGER
-        "O_OL_CNT", # INTEGER
-        "O_ALL_LOCAL", # INTEGER
+    constants.MONGO_TABLENAME_STOCK:      [
+        "s_i_id", # INTEGER
+        "s_w_id", # SMALLINT
+        "s_quantity", # INTEGER
+        "s_dist_01", # VARCHAR
+        "s_dist_02", # VARCHAR
+        "s_dist_03", # VARCHAR
+        "s_dist_04", # VARCHAR
+        "s_dist_05", # VARCHAR
+        "s_dist_06", # VARCHAR
+        "s_dist_07", # VARCHAR
+        "s_dist_08", # VARCHAR
+        "s_dist_09", # VARCHAR
+        "s_dist_10", # VARCHAR
+        "s_ytd", # INTEGER
+        "s_order_cnt", # INTEGER
+        "s_remote_cnt", # INTEGER
+        "s_data", # VARCHAR
     ],
-    constants.TABLENAME_NEW_ORDER:  [
-        "NO_O_ID", # INTEGER
-        "NO_D_ID", # TINYINT
-        "NO_W_ID", # SMALLINT
+    constants.MONGO_TABLENAME_ORDERS:     [
+        "o_id", # INTEGER
+        "o_c_id", # INTEGER
+        "o_d_id", # TINYINT
+        "o_w_id", # SMALLINT
+        "o_entry_d", # TIMESTAMP
+        "o_carrier_id", # INTEGER
+        "o_ol_cnt", # INTEGER
+        "o_all_local", # INTEGER
+        "o_orderline", # ARRAY
     ],
-    constants.TABLENAME_ORDER_LINE: [
-        "OL_O_ID", # INTEGER
-        "OL_D_ID", # TINYINT
-        "OL_W_ID", # SMALLINT
-        "OL_NUMBER", # INTEGER
-        "OL_I_ID", # INTEGER
-        "OL_SUPPLY_W_ID", # SMALLINT
-        "OL_DELIVERY_D", # TIMESTAMP
-        "OL_QUANTITY", # INTEGER
-        "OL_AMOUNT", # FLOAT
-        "OL_DIST_INFO", # VARCHAR
+    constants.MONGO_TABLENAME_NEWORDER:  [
+        "no_o_id", # INTEGER
+        "no_d_id", # TINYINT
+        "no_w_id", # SMALLINT
     ],
-    constants.TABLENAME_HISTORY:    [
-        "H_C_ID", # INTEGER
-        "H_C_D_ID", # TINYINT
-        "H_C_W_ID", # SMALLINT
-        "H_D_ID", # TINYINT
-        "H_W_ID", # SMALLINT
-        "H_DATE", # TIMESTAMP
-        "H_AMOUNT", # FLOAT
-        "H_DATA", # VARCHAR
+    constants.MONGO_TABLENAME_ORDERLINE: [
+#        "ol_o_id", # INTEGER
+#        "ol_d_id", # TINYINT
+#        "ol_w_id", # SMALLINT
+        "ol_number", # INTEGER
+        "ol_i_id", # INTEGER
+        "ol_supply_w_id", # SMALLINT
+        "ol_delivery_d", # TIMESTAMP
+        "ol_quantity", # INTEGER
+        "ol_amount", # FLOAT
+        "ol_dist_info", # VARCHAR
+    ],
+    constants.MONGO_TABLENAME_HISTORY:    [
+        "h_c_id", # INTEGER
+        "h_c_d_id", # TINYINT
+        "h_c_w_id", # SMALLINT
+        "h_d_id", # TINYINT
+        "h_w_id", # SMALLINT
+        "h_date", # TIMESTAMP
+        "h_amount", # FLOAT
+        "h_data", # VARCHAR
+    ],
+    constants.MONGO_TABLENAME_SUPPLIER:    [
+        "su_suppkey", # INTEGER
+        "su_name", # VARCHAR
+        "su_address", # VARCHAR
+        "su_nationkey", # INTEGER
+        "su_phone", # VARCHAR
+        "su_acctbal", # FLOAT
+        "su_comment", # VARCHAR
+    ],
+    constants.MONGO_TABLENAME_NATION:    [
+        "n_nationkey", # INTEGER
+        "n_name", # VARCHAR
+        "n_regionkey", # INTEGER
+        "n_comment", # VARCHAR
+    ],
+    constants.MONGO_TABLENAME_REGION:    [
+        "r_regionkey", # INTEGER
+        "r_name", # VARCHAR
+        "r_comment", # VARCHAR
     ],
 }
+
+CH2PP_TABLE_COLUMNS = {
+    constants.MONGO_TABLENAME_ITEM: [
+        "i_id", # INTEGER
+        "i_name", # VARCHAR
+        "i_price", # FLOAT
+        "i_extra", # Extra unused fields
+        "i_categories", # ARRAY
+        "i_data", # VARCHAR
+        "i_im_id", # INTEGER
+    ],
+    constants.MONGO_TABLENAME_WAREHOUSE: [
+        "w_id", # SMALLINT
+        "w_ytd", # FLOAT
+        "w_tax", # FLOAT
+        "w_name", # VARCHAR
+        "w_address", # JSON
+    ],
+    constants.MONGO_TABLENAME_DISTRICT: [
+        "d_id", # TINYINT
+        "d_w_id", # SMALLINT
+        "d_ytd", # FLOAT
+        "d_tax", # FLOAT
+        "d_next_o_id", # INT
+        "d_name", # VARCHAR
+        "d_address", # JSON
+    ],
+    constants.MONGO_TABLENAME_CUSTOMER:   [
+        "c_id", # INTEGER
+        "c_d_id", # TINYINT
+        "c_w_id", # SMALLINT
+        "c_discount", # FLOAT
+        "c_credit", # VARCHAR
+        "c_name", # JSON OBJECT
+        "c_credit_lim", # FLOAT
+        "c_balance", # FLOAT
+        "c_ytd_payment", # FLOAT
+        "c_payment_cnt", # INTEGER
+        "c_delivery_cnt", # INTEGER
+        "c_extra", # Extra unused fields
+        "c_addresses", # ARRAY
+        "c_phones", # ARRAY
+        "c_since", # TIMESTAMP
+        "c_item_categories", # ARRAY
+        "c_data", # VARCHAR
+    ],
+    constants.MONGO_TABLENAME_STOCK:      [
+        "s_i_id", # INTEGER
+        "s_w_id", # SMALLINT
+        "s_quantity", # INTEGER
+        "s_ytd", # INTEGER
+        "s_order_cnt", # INTEGER
+        "s_remote_cnt", # INTEGER
+        "s_data", # VARCHAR
+        "s_dists", # ARRAY
+    ],
+    constants.MONGO_TABLENAME_ORDERS:     [
+        "o_id", # INTEGER
+        "o_c_id", # INTEGER
+        "o_d_id", # TINYINT
+        "o_w_id", # SMALLINT
+        "o_carrier_id", # INTEGER
+        "o_ol_cnt", # INTEGER
+        "o_all_local", # INTEGER
+        "o_entry_d", # TIMESTAMP
+        "o_extra", # Extra unused fields
+        "o_orderline", # ARRAY
+    ],
+    constants.MONGO_TABLENAME_NEWORDER:  [
+        "no_o_id", # INTEGER
+        "no_d_id", # TINYINT
+        "no_w_id", # SMALLINT
+    ],
+    constants.MONGO_TABLENAME_ORDERLINE: [
+#        "ol_o_id", # INTEGER
+#        "ol_d_id", # TINYINT
+#        "ol_w_id", # SMALLINT
+        "ol_number", # INTEGER
+        "ol_i_id", # INTEGER
+        "ol_supply_w_id", # SMALLINT
+        "ol_delivery_d", # TIMESTAMP
+        "ol_quantity", # INTEGER
+        "ol_amount", # FLOAT
+        "ol_dist_info", # VARCHAR
+    ],
+    constants.MONGO_TABLENAME_HISTORY:    [
+        "h_c_id", # INTEGER
+        "h_c_d_id", # TINYINT
+        "h_c_w_id", # SMALLINT
+        "h_d_id", # TINYINT
+        "h_w_id", # SMALLINT
+        "h_date", # TIMESTAMP
+        "h_amount", # FLOAT
+        "h_data", # VARCHAR
+    ],
+    constants.MONGO_TABLENAME_SUPPLIER:    [
+        "su_suppkey", # INTEGER
+        "su_name", # VARCHAR
+        "su_address", # JSON
+        "su_nationkey", # INTEGER
+        "su_phone", # VARCHAR
+        "su_acctbal", # FLOAT
+        "su_comment", # VARCHAR
+    ],
+    constants.MONGO_TABLENAME_NATION:    [
+        "n_nationkey", # INTEGER
+        "n_name", # VARCHAR
+        "n_regionkey", # INTEGER
+        "n_comment", # VARCHAR
+    ],
+    constants.MONGO_TABLENAME_REGION:    [
+        "r_regionkey", # INTEGER
+        "r_name", # VARCHAR
+        "r_comment", # VARCHAR
+    ],
+    constants.MONGO_TABLENAME_WAREHOUSE_ADDRESS:    [
+        "w_street_1", # VARCHAR
+        "w_street_2", # VARCHAR
+        "w_city", # VARCHAR
+        "w_state", # VARCHAR
+        "w_zip", # VARCHAR
+    ],
+    constants.MONGO_TABLENAME_DISTRICT_ADDRESS:    [
+        "d_street_1", # VARCHAR
+        "d_street_2", # VARCHAR
+        "d_city", # VARCHAR
+        "d_state", # VARCHAR
+        "d_zip", # VARCHAR
+    ],
+    constants.MONGO_TABLENAME_CUSTOMER_NAME:    [
+        "c_last", # VARCHAR
+        "c_first", # VARCHAR
+        "c_middle", # VARCHAR
+    ],
+    constants.MONGO_TABLENAME_CUSTOMER_ADDRESSES:    [
+        "c_address_kind", # VARCHAR
+        "c_street_1", # VARCHAR
+        "c_street_2", # VARCHAR
+        "c_city", # VARCHAR
+        "c_state", # VARCHAR
+        "c_zip", # VARCHAR
+    ],
+    constants.MONGO_TABLENAME_CUSTOMER_PHONES:    [
+        "c_phone_kind", # VARCHAR
+        "c_phone_number", # VARCHAR
+    ],
+    constants.MONGO_TABLENAME_SUPPLIER_ADDRESS:    [
+        "su_street_1", # VARCHAR
+        "su_street_2", # VARCHAR
+        "su_city", # VARCHAR
+        "su_state", # VARCHAR
+        "su_zip", # VARCHAR
+    ],
+}
+
 TABLE_INDEXES = {
     constants.TABLENAME_ITEM: [
         "I_ID",
@@ -178,12 +358,12 @@ TABLE_INDEXES = {
         "O_W_ID",
         "O_C_ID",
     ],
-    constants.TABLENAME_NEW_ORDER:  [
+    constants.TABLENAME_NEWORDER:  [
         "NO_O_ID",
         "NO_D_ID",
         "NO_W_ID",
     ],
-    constants.TABLENAME_ORDER_LINE: [
+    constants.TABLENAME_ORDERLINE: [
         "OL_O_ID",
         "OL_D_ID",
         "OL_W_ID",
@@ -203,23 +383,51 @@ class MongodbDriver(AbstractDriver):
     DENORMALIZED_TABLES = [
         constants.TABLENAME_CUSTOMER,
         constants.TABLENAME_ORDERS,
-        constants.TABLENAME_ORDER_LINE,
+        constants.TABLENAME_ORDERLINE,
         constants.TABLENAME_HISTORY,
     ]
     
     
-    def __init__(self, ddl):
+    def __init__(self, ddl, clientId, TAFlag="T",
+                 schema=constants.CH2_DRIVER_SCHEMA["CH2"],
+                 analyticalQueries=constants.CH2_DRIVER_ANALYTICAL_QUERIES["HAND_OPTIMIZED_QUERIES"],
+                 customerExtraFields=constants.CH2PP_CUSTOMER_EXTRA_FIELDS,
+                 ordersExtraFields=constants.CH2PP_ORDERS_EXTRA_FIELDS,
+                 itemExtraFields=constants.CH2PP_ITEM_EXTRA_FIELDS,
+                 load_mode=constants.CH2_DRIVER_LOAD_MODE["NOT_SET"],
+                 kv_timeout=constants.CH2_DRIVER_KV_TIMEOUT,
+                 bulkload_batch_size=constants.CH2_DRIVER_BULKLOAD_BATCH_SIZE):
         super(MongodbDriver, self).__init__("mongodb", ddl)
-        self.database = None
-        self.conn = None
-        self.denormalize = False
-        self.w_customers = { }
-        self.w_orders = { }
-        
-        ## Create member mapping to collections
-        for name in constants.ALL_TABLES:
-            self.__dict__[name.lower()] = None
-    
+        try:
+            user = os.environ["USER_ID"]
+            password = os.environ["PASSWORD"]
+            data_node = os.environ["DATA_URL"]
+            cluster = data_node[0: data_node.index('.')]
+            uri = "mongodb+srv://"+user+":"+password+"@"+data_node+"/?retryWrites=true&w=majority&appName="+cluster
+            #cluster0.ogw88.mongodb.net
+            self.client_id = clientId;
+            self.client = MongoClient(uri, server_api=ServerApi('1'))
+            self.client.admin.command('ping')
+            print("Pinged your deployment. You successfully connected to MongoDB!")
+            self.database = self.client["ch2"]
+            self.denormalize = False
+            self.schema = schema
+            self.analyticalQueries = analyticalQueries
+            self.customerExtraFields = customerExtraFields
+            self.ordersExtraFields = ordersExtraFields
+            self.itemExtraFields = itemExtraFields
+            self.bulkload_batch_size = bulkload_batch_size
+
+            self.collections = {}
+            for tableName in constants.MONGO_ALL_TABLES:
+                self.collections[tableName] = self.database.get_collection(constants.MONGO_COLLECTIONS_DICT[tableName])
+
+        except Exception as e:
+            raise Exception(
+                "The following error occurred: ", e)
+
+        return
+
     ## ----------------------------------------------
     ## makeDefaultConfig
     ## ----------------------------------------------
@@ -230,6 +438,8 @@ class MongodbDriver(AbstractDriver):
     ## loadConfig
     ## ----------------------------------------------
     def loadConfig(self, config):
+        return
+
         for key in MongodbDriver.DEFAULT_CONFIG.keys():
             assert key in config, "Missing parameter '%s' in %s configuration" % (key, self.name)
         
@@ -262,87 +472,162 @@ class MongodbDriver(AbstractDriver):
                 for index in TABLE_INDEXES[name]:
                 	self.database[name].create_index(index)
         ## FOR
-    
+
+    def tryBulkLoad(self, collection, cur_batch):
+        for i in range(NUM_LOAD_RETRIES):
+            try:
+                result = collection.insert_many(cur_batch)
+                if result.acknowledged == True:
+                    return True
+                else:
+                    time.sleep(1)
+                    logging.debug("Client ID # %d failed bulk load data into KV, try %d" % (self.client_id, i))
+            except:
+                logging.debug("Client ID # %d exception bulk load data into KV, try %d" % (self.client_id, i))
+                exc_info = sys.exc_info()
+                tb = ''.join(traceback.format_tb(exc_info[2]))
+                logging.debug(f'Exception info: {exc_info[1]}\nTraceback:\n{tb}')
+                time.sleep(1)
+
+        logging.debug("Client ID # %d failed bulk load data into KV after %d retries" % (self.client_id, NUM_LOAD_RETRIES))
+        return False
+
     ## ----------------------------------------------
-    ## loadTuples
+    ## loadTuples for mongodb
     ## ----------------------------------------------
     def loadTuples(self, tableName, tuples):
-        if len(tuples) == 0: return
+        if len(tuples) == 0:
+            return
+
+        tableName = tableName[18:]
+
         logging.debug("Loading %d tuples for tableName %s" % (len(tuples), tableName))
         
         assert tableName in TABLE_COLUMNS, "Unexpected table %s" % tableName
-        columns = TABLE_COLUMNS[tableName]
-        num_columns = range(len(columns))
-        
-        tuple_dicts = [ ]
-        
-        ## We want to combine all of a CUSTOMER's ORDERS, ORDER_LINE, and HISTORY records
-        ## into a single document
-        if self.denormalize and tableName in MongodbDriver.DENORMALIZED_TABLES:
-            ## If this is the CUSTOMER table, then we'll just store the record locally for now
-            if tableName == constants.TABLENAME_CUSTOMER:
-                for t in tuples:
-                    key = tuple(t[:3]) # C_ID, D_ID, W_ID
-                    self.w_customers[key] = dict(map(lambda i: (columns[i], t[i]), num_columns))
-                ## FOR
-                
-            ## If this is an ORDER_LINE record, then we need to stick it inside of the 
-            ## right ORDERS record
-            elif tableName == constants.TABLENAME_ORDER_LINE:
-                for t in tuples:
-                    o_key = tuple(t[:3]) # O_ID, O_D_ID, O_W_ID
-                    (c_key, o_idx) = self.w_orders[o_key]
-                    c = self.w_customers[c_key]
-                    assert o_idx >= 0
-                    assert o_idx < len(c[constants.TABLENAME_ORDERS])
-                    o = c[constants.TABLENAME_ORDERS][o_idx]
-                    if not tableName in o: o[tableName] = [ ]
-                    o[tableName].append(dict(map(lambda i: (columns[i], t[i]), num_columns[4:])))
-                ## FOR
-                    
-            ## Otherwise we have to find the CUSTOMER record for the other tables
-            ## and append ourselves to them
-            else:
-                if tableName == constants.TABLENAME_ORDERS:
-                    key_start = 1
-                    cols = num_columns[0:1] + num_columns[4:] # Removes O_C_ID, O_D_ID, O_W_ID
-                else:
-                    key_start = 0
-                    cols = num_columns[3:] # Removes H_C_ID, H_C_D_ID, H_C_W_ID
-                    
-                for t in tuples:
-                    c_key = tuple(t[key_start:key_start+3]) # C_ID, D_ID, W_ID
-                    assert c_key in self.w_customers, "Customer Key: %s\nAll Keys:\n%s" % (str(c_key), "\n".join(map(str, sorted(self.w_customers.keys()))))
-                    c = self.w_customers[c_key]
-                    
-                    if not tableName in c: c[tableName] = [ ]
-                    c[tableName].append(dict(map(lambda i: (columns[i], t[i]), cols)))
-                    
-                    ## Since ORDER_LINE doesn't have a C_ID, we have to store a reference to
-                    ## this ORDERS record so that we can look it up later
-                    if tableName == constants.TABLENAME_ORDERS:
-                        o_key = (t[0], t[2], t[3]) # O_ID, O_D_ID, O_W_ID
-                        self.w_orders[o_key] = (c_key, len(c[tableName])-1) # CUSTOMER, ORDER IDX
-                ## FOR
-            ## IF
 
-        ## Otherwise just shove the tuples straight to the target collection
-        else:
-            for t in tuples:
-                tuple_dicts.append(dict(map(lambda i: (columns[i], t[i]), num_columns)))
-            ## FOR
-            self.database[tableName].insert(tuple_dicts)
-        ## IF
-        
+        collection = self.collections[tableName]
+        # For bulk load: load in batches
+        cur_batch = []
+        cur_size = 0
+        for t in tuples:
+            val = self.getOneDoc(tableName, t, False)
+            cur_batch.append(val)
+            cur_size += 1
+            if cur_size > 10000: #self.bulkload_batch_size:
+                result = self.tryBulkLoad(collection, cur_batch)
+                if result == True:
+                    cur_batch = []
+                    cur_size = 0
+                    continue
+                else:
+                    logging.debug("Client ID # %d failed bulk load data into KV, aborting..." % self.client_id)
+        if cur_size > 0:
+            result = self.tryBulkLoad(collection, cur_batch)
+            if result == False:
+                logging.debug("Client ID # %d failed bulk load data into KV, aborting..." % self.client_id)
         return
         
+    def getOneDoc(self, tableName, tuple, denorm):
+        if self.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
+            return self.getOneCH2Doc(tableName, tuple, denorm)
+        else:
+            return self.getOneCH2PPDoc(tableName, tuple, denorm)
+
+    def getOneCH2Doc(self, tableName, tuple, denorm):
+        columns = TABLE_COLUMNS[tableName]
+        if denorm:
+            val = tuple
+        else:
+            val = {}
+            for l, v in enumerate(tuple):
+                v1 = tuple[l]
+                if tableName == constants.MONGO_TABLENAME_ORDERS and columns[l] == "o_orderline":
+                    v1 = []
+                    for olv in v:
+                        v1.append(self.genNestedTuple(olv, constants.MONGO_TABLENAME_ORDERLINE))
+
+                elif isinstance(v1,(datetime)):
+                    v1 = str(v1)
+                val[columns[l]] = v1
+
+        return val
+
+    def getOneCH2PPDoc(self, tableName, tuple, denorm):
+        columns = CH2PP_TABLE_COLUMNS[tableName]
+        if denorm:
+            val = tuple
+        else:
+            val = {}
+            for l, v in enumerate(tuple):
+                v1 = tuple[l]
+                if isinstance(v1,(datetime)):
+                    v1 = str(v1)
+                elif tableName == constants.MONGO_TABLENAME_ORDERS and columns[l] == "o_orderline":
+                    v1 = []
+                    for olv in v:
+                        v1.append(self.genNestedTuple(olv, constants.MONGO_TABLENAME_ORDERLINE))
+                elif (self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"] and
+                      (tableName == constants.MONGO_TABLENAME_ITEM and columns[l] == "i_categories" or
+                       tableName == constants.MONGO_TABLENAME_CUSTOMER and columns[l] == "c_item_categories")):
+                    continue
+                elif tableName == constants.MONGO_TABLENAME_WAREHOUSE and columns[l] == "w_address":
+                    v1 = self.genNestedTuple(v, constants.MONGO_TABLENAME_WAREHOUSE_ADDRESS)
+                elif tableName == constants.MONGO_TABLENAME_DISTRICT and columns[l] == "d_address":
+                    v1 = self.genNestedTuple(v, constants.MONGO_TABLENAME_DISTRICT_ADDRESS)
+                elif tableName == constants.MONGO_TABLENAME_SUPPLIER and columns[l] == "su_address":
+                    v1 = self.genNestedTuple(v, constants.MONGO_TABLENAME_SUPPLIER_ADDRESS)
+                elif tableName == constants.MONGO_TABLENAME_CUSTOMER:
+                    if columns[l] == "c_name":
+                        v1 = self.genNestedTuple(v, constants.MONGO_TABLENAME_CUSTOMER_NAME)
+                    elif columns[l] == "c_extra":
+                        if self.schema == constants.CH2_DRIVER_SCHEMA["CH2PP"]:
+                            for i in range(0, self.customerExtraFields):
+                                val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                        continue
+                    elif columns[l] == "c_addresses":
+                        v1 = []
+                        for clv in v:
+                            v1.append(self.genNestedTuple(clv, constants.MONGO_TABLENAME_CUSTOMER_ADDRESSES))
+                            if self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"]:
+                                break # Load only one customer address for CH2P
+                    elif columns[l] == "c_phones":
+                        v1 = []
+                        for clv in v:
+                            v1.append(self.genNestedTuple(clv, constants.MONGO_TABLENAME_CUSTOMER_PHONES))
+                            if self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"]:
+                                break # Load only one customer phone for CH2P
+                elif tableName == constants.MONGO_TABLENAME_ORDERS and columns[l] == "o_extra":
+                    if self.schema == constants.CH2_DRIVER_SCHEMA["CH2PP"]:
+                        for i in range(0, self.ordersExtraFields):
+                            val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                    continue
+                elif tableName == constants.MONGO_TABLENAME_ITEM and columns[l] == "i_extra":
+                    if self.schema == constants.CH2_DRIVER_SCHEMA["CH2PP"]:
+                        for i in range(0, self.itemExtraFields):
+                            val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                    continue
+                val[columns[l]] = v1
+        return val
+
+    def genNestedTuple(self, tuple, tableName):
+        if self.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
+            columns = TABLE_COLUMNS[tableName]
+        else:
+            columns = CH2PP_TABLE_COLUMNS[tableName]
+        rval = {}
+        for l, v in enumerate(tuple):
+            if isinstance(v,(datetime)):
+                v = str(v)
+            rval[columns[l]] = v
+        return rval
+
     ## ----------------------------------------------
     ## loadFinishDistrict
     ## ----------------------------------------------
     def loadFinishDistrict(self, w_id, d_id):
         if self.denormalize:
             logging.debug("Pushing %d denormalized CUSTOMER records for WAREHOUSE %d DISTRICT %d into MongoDB" % (len(self.w_customers), w_id, d_id))
-            self.database[constants.TABLENAME_CUSTOMER].insert(self.w_customers.values())
+            self.database[constants.MONGO_TABLENAME_CUSTOMER].insert(self.w_customers.values())
             self.w_customers.clear()
             self.w_orders.clear()
         ## IF
@@ -351,7 +636,7 @@ class MongodbDriver(AbstractDriver):
     ## loadFinish
     ## ----------------------------------------------
     def loadFinish(self):
-        logging.info("Finished loading tables")
+        logging.info("Client ID # %d Finished loading tables" % (self.client_id))
         if logging.getLogger().isEnabledFor(logging.DEBUG):
             for name in constants.ALL_TABLES:
                 if self.denormalize and name in MongodbDriver.DENORMALIZED_TABLES[1:]: continue
