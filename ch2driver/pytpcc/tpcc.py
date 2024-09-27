@@ -76,7 +76,7 @@ def startLoading(driverClass, schema, scaleParameters, args, config, customerExt
     numClients = args['tclients'] + args['aclients']
     logging.debug("Creating client pool with %d processes" % numClients)
     pool = multiprocessing.Pool(numClients)
-    debug = logging.getLoggler().isEnabledFor(logging.DEBUG)
+    debug = logging.getLogger().isEnabledFor(logging.DEBUG)
 
     # Split the warehouses into chunks
     w_ids = list(map(lambda x: [ ], range(numClients)))
@@ -535,4 +535,5 @@ if __name__ == '__main__':
     ## IF
 
 ## MAIN
+
 
