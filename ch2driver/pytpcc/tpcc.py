@@ -256,11 +256,11 @@ if __name__ == '__main__':
     aparser.add_argument('--ch2p', action='store_true', help='Create CH2+ schema')
     aparser.add_argument('--ch2pp', action='store_true', help='Create CH2++ schema')
     aparser.add_argument('--nonOptimizedQueries', action='store_true', help='Run the out of the box unoptimized 22 analytical CH2 queries')
-    aparser.add_argument('--customerExtraFields', default=constants.CH2PP_CUSTOMER_EXTRA_FIELDS , type=int,
+    aparser.add_argument('--customerExtraFields', default=constants.CH2_CUSTOMER_EXTRA_FIELDS , type=int,
                          help='Number of extra unused fields in Customer')
-    aparser.add_argument('--ordersExtraFields', default=constants.CH2PP_ORDERS_EXTRA_FIELDS , type=int,
+    aparser.add_argument('--ordersExtraFields', default=constants.CH2_ORDERS_EXTRA_FIELDS , type=int,
                          help='Number of extra unused fields in Orders')
-    aparser.add_argument('--itemExtraFields', default=constants.CH2PP_ITEM_EXTRA_FIELDS , type=int,
+    aparser.add_argument('--itemExtraFields', default=constants.CH2_ITEM_EXTRA_FIELDS , type=int,
                          help='Number of extra unused fields in Item')
 
     aparser.add_argument('--print-config', action='store_true',
@@ -535,5 +535,7 @@ if __name__ == '__main__':
     ## IF
 
 ## MAIN
+
+
 
 
