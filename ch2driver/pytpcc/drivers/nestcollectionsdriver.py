@@ -206,6 +206,7 @@ TABLE_COLUMNS = {
         "i_name", # VARCHAR
         "i_price", # FLOAT
         "i_data", # VARCHAR
+        "i_extra", # Extra unused fields
     ],
     constants.TABLENAME_WAREHOUSE: [
         "w_id", # SMALLINT
@@ -253,6 +254,7 @@ TABLE_COLUMNS = {
         "c_payment_cnt", # INTEGER
         "c_delivery_cnt", # INTEGER
         "c_data", # VARCHAR
+        "c_extra", # Extra unused fields
     ],
     constants.TABLENAME_STOCK:      [
         "s_i_id", # INTEGER
@@ -282,6 +284,7 @@ TABLE_COLUMNS = {
         "o_carrier_id", # INTEGER
         "o_ol_cnt", # INTEGER
         "o_all_local", # INTEGER
+        "o_extra", # Extra unused fields
         "o_orderline", # ARRAY
     ],
     constants.TABLENAME_NEWORDER:  [
@@ -722,9 +725,9 @@ class NestcollectionsDriver(AbstractDriver):
     def __init__(self, ddl, clientId, TAFlag="T",
                  schema=constants.CH2_DRIVER_SCHEMA["CH2"],
                  analyticalQueries=constants.CH2_DRIVER_ANALYTICAL_QUERIES["HAND_OPTIMIZED_QUERIES"],
-                 customerExtraFields=constants.CH2PP_CUSTOMER_EXTRA_FIELDS,
-                 ordersExtraFields=constants.CH2PP_ORDERS_EXTRA_FIELDS,
-                 itemExtraFields=constants.CH2PP_ITEM_EXTRA_FIELDS,
+                 customerExtraFields=constants.CH2_CUSTOMER_EXTRA_FIELDS,
+                 ordersExtraFields=constants.CH2_ORDERS_EXTRA_FIELDS,
+                 itemExtraFields=constants.CH2_ITEM_EXTRA_FIELDS,
                  load_mode=constants.CH2_DRIVER_LOAD_MODE["NOT_SET"],
                  kv_timeout=constants.CH2_DRIVER_KV_TIMEOUT,
                  bulkload_batch_size=constants.CH2_DRIVER_BULKLOAD_BATCH_SIZE):
@@ -964,6 +967,18 @@ class NestcollectionsDriver(AbstractDriver):
                     for olv in v:
                         v1.append(self.genNestedTuple(olv, constants.TABLENAME_ORDERLINE))
 
+                elif tableName == constants.TABLENAME_CUSTOMER and columns[l] == "c_extra":
+                    for i in range(0, self.customerExtraFields):
+                        val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                    continue
+                elif tableName == constants.TABLENAME_ORDERS and columns[l] == "o_extra":
+                    for i in range(0, self.ordersExtraFields):
+                        val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                    continue
+                elif tableName == constants.TABLENAME_ITEM and columns[l] == "i_extra":
+                    for i in range(0, self.itemExtraFields):
+                        val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                    continue
                 elif isinstance(v1,(datetime)):
                     v1 = str(v1)
                 val[columns[l]] = v1
@@ -1586,4 +1601,5 @@ class NestcollectionsDriver(AbstractDriver):
                 ]
         return qry_times
 ## CLASS
+
 
