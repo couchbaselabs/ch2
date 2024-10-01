@@ -323,7 +323,9 @@ class Loader:
         i_data = rand.astring(constants.MIN_I_DATA, constants.MAX_I_DATA)
         if original: i_data = self.fillOriginal(i_data)
 
-        return [i_id, i_im_id, i_name, i_price, i_data]
+        i_tuple = [i_id, i_im_id, i_name, i_price, i_data]
+        i_tuple.append(self.generateExtraFields(self.itemExtraFields))
+        return i_tuple
     ## DEF
 
     ## ==============================================
@@ -338,7 +340,6 @@ class Loader:
         if original: i_data = self.fillOriginal(i_data)
         i_tuple = [i_id, i_name, i_price]
         i_tuple.append(self.generateExtraFields(self.itemExtraFields))
-
         i_category_num = np.random.choice(range(1, 128), size=np.random.randint(1,3), replace=False)
         i_categories = []
         for i in i_category_num:
@@ -456,10 +457,12 @@ class Loader:
                                                            # upper and lower case and digits
         c_zip = self.generateZip()
 
-        return [ c_id, c_d_id, c_w_id, c_first, c_middle, c_last, \
-                c_street1, c_street2, c_city, c_state, c_zip, \
-                c_phone, c_since, c_credit, c_credit_lim, c_discount, c_balance, \
-                c_ytd_payment, c_payment_cnt, c_delivery_cnt, c_data ]
+        c_tuple = [ c_id, c_d_id, c_w_id, c_first, c_middle, c_last, \
+                    c_street1, c_street2, c_city, c_state, c_zip, \
+                    c_phone, c_since, c_credit, c_credit_lim, c_discount, c_balance, \
+                    c_ytd_payment, c_payment_cnt, c_delivery_cnt, c_data ]
+        c_tuple.append(self.generateExtraFields(self.customerExtraFields))
+        return c_tuple
     ## DEF
 
     ## ==============================================
@@ -520,7 +523,9 @@ class Loader:
         o_entry_d = orderTime
         o_carrier_id = constants.NULL_CARRIER_ID if newOrder else rand.number(constants.MIN_CARRIER_ID, constants.MAX_CARRIER_ID)
         o_all_local = constants.INITIAL_ALL_LOCAL
-        return [ o_id, o_c_id, o_d_id, o_w_id, o_entry_d, o_carrier_id, o_ol_cnt, o_all_local ]
+        o_tuple = [ o_id, o_c_id, o_d_id, o_w_id, o_entry_d, o_carrier_id, o_ol_cnt, o_all_local ]
+        o_tuple.append(self.generateExtraFields(self.ordersExtraFields))
+        return o_tuple
     ## DEF
 
     ## ==============================================
@@ -854,4 +859,5 @@ class Loader:
     ## DEF
 
 ## CLASS
+
 
