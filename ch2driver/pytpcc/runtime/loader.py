@@ -244,7 +244,7 @@ class Loader:
     def loadSupplier(self):
         ## Load all of the suppliers
         nkeyarr = []
-        nkeyarr = [0 for i in range(constants.NUM_SUPPLIERS+1)] 
+        nkeyarr = [0 for i in range(constants.NUM_SUPPLIERS+1)]
         tuples = [ ]
         total_tuples = 0
         suppRecommendsCommentTuples = sample(list(range(1, constants.NUM_SUPPLIERS+1)), 5)
