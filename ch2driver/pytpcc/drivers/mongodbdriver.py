@@ -51,6 +51,7 @@ TABLE_COLUMNS = {
         "i_name", # VARCHAR
         "i_price", # FLOAT
         "i_data", # VARCHAR
+        "i_extra", # Extra unused fields
     ],
     constants.MONGO_TABLENAME_WAREHOUSE: [
         "w_id", # SMALLINT
@@ -98,6 +99,7 @@ TABLE_COLUMNS = {
         "c_payment_cnt", # INTEGER
         "c_delivery_cnt", # INTEGER
         "c_data", # VARCHAR
+        "c_extra", # Extra unused fields
     ],
     constants.MONGO_TABLENAME_STOCK:      [
         "s_i_id", # INTEGER
@@ -127,6 +129,7 @@ TABLE_COLUMNS = {
         "o_carrier_id", # INTEGER
         "o_ol_cnt", # INTEGER
         "o_all_local", # INTEGER
+        "o_extra", # Extra unused fields
         "o_orderline", # ARRAY
     ],
     constants.MONGO_TABLENAME_NEWORDER:  [
@@ -391,9 +394,9 @@ class MongodbDriver(AbstractDriver):
     def __init__(self, ddl, clientId, TAFlag="T",
                  schema=constants.CH2_DRIVER_SCHEMA["CH2"],
                  analyticalQueries=constants.CH2_DRIVER_ANALYTICAL_QUERIES["HAND_OPTIMIZED_QUERIES"],
-                 customerExtraFields=constants.CH2PP_CUSTOMER_EXTRA_FIELDS,
-                 ordersExtraFields=constants.CH2PP_ORDERS_EXTRA_FIELDS,
-                 itemExtraFields=constants.CH2PP_ITEM_EXTRA_FIELDS,
+                 customerExtraFields=constants.CH2_CUSTOMER_EXTRA_FIELDS["NOT_SET"],
+                 ordersExtraFields=constants.CH2_ORDERS_EXTRA_FIELDS["NOT_SET"],
+                 itemExtraFields=constants.CH2_ITEM_EXTRA_FIELDS["NOT_SET"],
                  load_mode=constants.CH2_DRIVER_LOAD_MODE["NOT_SET"],
                  kv_timeout=constants.CH2_DRIVER_KV_TIMEOUT,
                  bulkload_batch_size=constants.CH2_DRIVER_BULKLOAD_BATCH_SIZE):
@@ -545,7 +548,18 @@ class MongodbDriver(AbstractDriver):
                     v1 = []
                     for olv in v:
                         v1.append(self.genNestedTuple(olv, constants.MONGO_TABLENAME_ORDERLINE))
-
+                elif tableName == constants.MONGO_TABLENAME_CUSTOMER and columns[l] == "c_extra":
+                    for i in range(0, self.customerExtraFields):
+                        val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                    continue
+                elif tableName == constants.MONGO_TABLENAME_ORDERS and columns[l] == "o_extra":
+                    for i in range(0, self.ordersExtraFields):
+                        val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                    continue
+                elif tableName == constants.MONGO_TABLENAME_ITEM and columns[l] == "i_extra":
+                    for i in range(0, self.itemExtraFields):
+                        val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                    continue
                 elif isinstance(v1,(datetime)):
                     v1 = str(v1)
                 val[columns[l]] = v1
@@ -580,9 +594,8 @@ class MongodbDriver(AbstractDriver):
                     if columns[l] == "c_name":
                         v1 = self.genNestedTuple(v, constants.MONGO_TABLENAME_CUSTOMER_NAME)
                     elif columns[l] == "c_extra":
-                        if self.schema == constants.CH2_DRIVER_SCHEMA["CH2PP"]:
-                            for i in range(0, self.customerExtraFields):
-                                val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                        for i in range(0, self.customerExtraFields):
+                            val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
                         continue
                     elif columns[l] == "c_addresses":
                         v1 = []
@@ -597,14 +610,12 @@ class MongodbDriver(AbstractDriver):
                             if self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"]:
                                 break # Load only one customer phone for CH2P
                 elif tableName == constants.MONGO_TABLENAME_ORDERS and columns[l] == "o_extra":
-                    if self.schema == constants.CH2_DRIVER_SCHEMA["CH2PP"]:
-                        for i in range(0, self.ordersExtraFields):
-                            val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                    for i in range(0, self.ordersExtraFields):
+                        val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
                     continue
                 elif tableName == constants.MONGO_TABLENAME_ITEM and columns[l] == "i_extra":
-                    if self.schema == constants.CH2_DRIVER_SCHEMA["CH2PP"]:
-                        for i in range(0, self.itemExtraFields):
-                            val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                    for i in range(0, self.itemExtraFields):
+                        val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
                     continue
                 val[columns[l]] = v1
         return val
@@ -1092,3 +1103,4 @@ class MongodbDriver(AbstractDriver):
         return int(result)
         
 ## CLASS
+
