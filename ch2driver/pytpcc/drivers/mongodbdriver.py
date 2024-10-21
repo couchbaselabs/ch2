@@ -44,46 +44,55 @@ import constants
 from .abstractdriver import *
 NUM_LOAD_RETRIES = 10
 
-TABLE_COLUMNS = {
+CH2_TABLE_COLUMNS = {
     constants.MONGO_TABLENAME_ITEM: [
         "i_id", # INTEGER
-        "i_im_id", # INTEGER
         "i_name", # VARCHAR
         "i_price", # FLOAT
-        "i_data", # VARCHAR
         "i_extra", # Extra unused fields
+        "i_categories", # ARRAY
+        "i_data", # VARCHAR
+        "i_im_id", # INTEGER
     ],
     constants.MONGO_TABLENAME_WAREHOUSE: [
         "w_id", # SMALLINT
+        "w_ytd", # FLOAT
+        "w_tax", # FLOAT
         "w_name", # VARCHAR
         "w_street_1", # VARCHAR
         "w_street_2", # VARCHAR
         "w_city", # VARCHAR
         "w_state", # VARCHAR
         "w_zip", # VARCHAR
-        "w_tax", # FLOAT
-        "w_ytd", # FLOAT
     ],
     constants.MONGO_TABLENAME_DISTRICT: [
         "d_id", # TINYINT
         "d_w_id", # SMALLINT
+        "d_ytd", # FLOAT
+        "d_tax", # FLOAT
+        "d_next_o_id", # INT
         "d_name", # VARCHAR
         "d_street_1", # VARCHAR
         "d_street_2", # VARCHAR
         "d_city", # VARCHAR
         "d_state", # VARCHAR
         "d_zip", # VARCHAR
-        "d_tax", # FLOAT
-        "d_ytd", # FLOAT
-        "d_next_o_id", # INT
     ],
     constants.MONGO_TABLENAME_CUSTOMER:   [
         "c_id", # INTEGER
         "c_d_id", # TINYINT
         "c_w_id", # SMALLINT
+        "c_discount", # FLOAT
+        "c_credit", # VARCHAR
         "c_first", # VARCHAR
         "c_middle", # VARCHAR
         "c_last", # VARCHAR
+        "c_credit_lim", # FLOAT
+        "c_balance", # FLOAT
+        "c_ytd_payment", # FLOAT
+        "c_payment_cnt", # INTEGER
+        "c_delivery_cnt", # INTEGER
+        "c_extra", # Extra unused fields
         "c_street_1", # VARCHAR
         "c_street_2", # VARCHAR
         "c_city", # VARCHAR
@@ -91,20 +100,17 @@ TABLE_COLUMNS = {
         "c_zip", # VARCHAR
         "c_phone", # VARCHAR
         "c_since", # TIMESTAMP
-        "c_credit", # VARCHAR
-        "c_credit_lim", # FLOAT
-        "c_discount", # FLOAT
-        "c_balance", # FLOAT
-        "c_ytd_payment", # FLOAT
-        "c_payment_cnt", # INTEGER
-        "c_delivery_cnt", # INTEGER
+        "c_item_categories", # ARRAY
         "c_data", # VARCHAR
-        "c_extra", # Extra unused fields
     ],
     constants.MONGO_TABLENAME_STOCK:      [
         "s_i_id", # INTEGER
         "s_w_id", # SMALLINT
         "s_quantity", # INTEGER
+        "s_ytd", # INTEGER
+        "s_order_cnt", # INTEGER
+        "s_remote_cnt", # INTEGER
+        "s_data", # VARCHAR
         "s_dist_01", # VARCHAR
         "s_dist_02", # VARCHAR
         "s_dist_03", # VARCHAR
@@ -115,20 +121,16 @@ TABLE_COLUMNS = {
         "s_dist_08", # VARCHAR
         "s_dist_09", # VARCHAR
         "s_dist_10", # VARCHAR
-        "s_ytd", # INTEGER
-        "s_order_cnt", # INTEGER
-        "s_remote_cnt", # INTEGER
-        "s_data", # VARCHAR
     ],
     constants.MONGO_TABLENAME_ORDERS:     [
         "o_id", # INTEGER
         "o_c_id", # INTEGER
         "o_d_id", # TINYINT
         "o_w_id", # SMALLINT
-        "o_entry_d", # TIMESTAMP
         "o_carrier_id", # INTEGER
         "o_ol_cnt", # INTEGER
         "o_all_local", # INTEGER
+        "o_entry_d", # TIMESTAMP
         "o_extra", # Extra unused fields
         "o_orderline", # ARRAY
     ],
@@ -336,40 +338,49 @@ CH2PP_TABLE_COLUMNS = {
 }
 
 TABLE_INDEXES = {
-    constants.TABLENAME_ITEM: [
-        "I_ID",
+    constants.MONGO_TABLENAME_ITEM: [
+        "i_id",
     ],
-    constants.TABLENAME_WAREHOUSE: [
-        "W_ID",
-    ],    
-    constants.TABLENAME_DISTRICT: [
-        "D_ID",
-        "D_W_ID",
+    constants.MONGO_TABLENAME_WAREHOUSE: [
+        "w_id",
     ],
-    constants.TABLENAME_CUSTOMER:   [
-        "C_ID",
-        "C_D_ID",
-        "C_W_ID",
+    constants.MONGO_TABLENAME_DISTRICT: [
+        "d_id",
+        "d_w_id",
     ],
-    constants.TABLENAME_STOCK:      [
-        "S_I_ID",
-        "S_W_ID",
+    constants.MONGO_TABLENAME_CUSTOMER:   [
+        "c_id",
+        "c_d_id",
+        "c_w_id",
     ],
-    constants.TABLENAME_ORDERS:     [
-        "O_ID",
-        "O_D_ID",
-        "O_W_ID",
-        "O_C_ID",
+    constants.MONGO_TABLENAME_STOCK:      [
+        "s_i_id",
+        "s_w_id",
     ],
-    constants.TABLENAME_NEWORDER:  [
-        "NO_O_ID",
-        "NO_D_ID",
-        "NO_W_ID",
+    constants.MONGO_TABLENAME_ORDERS:     [
+        "o_id",
+        "o_d_id",
+        "o_w_id",
+        "o_c_id",
     ],
-    constants.TABLENAME_ORDERLINE: [
-        "OL_O_ID",
-        "OL_D_ID",
-        "OL_W_ID",
+    constants.MONGO_TABLENAME_NEWORDER:  [
+        "no_o_id",
+        "no_d_id",
+        "no_w_id",
+    ],
+    constants.MONGO_TABLENAME_ORDERLINE: [
+        "ol_o_id",
+        "ol_d_id",
+        "ol_w_id",
+    ],
+    constants.MONGO_TABLENAME_SUPPLIER:    [
+        "su_suppkey",
+    ],
+    constants.MONGO_TABLENAME_NATION:    [
+        "n_nationkey",
+    ],
+    constants.MONGO_TABLENAME_REGION:    [
+        "r_regionkey",
     ],
 }
 
@@ -393,6 +404,7 @@ class MongodbDriver(AbstractDriver):
     
     def __init__(self, ddl, clientId, TAFlag="T",
                  schema=constants.CH2_DRIVER_SCHEMA["CH2"],
+                 preparedTransactionQueries={},
                  analyticalQueries=constants.CH2_DRIVER_ANALYTICAL_QUERIES["HAND_OPTIMIZED_QUERIES"],
                  customerExtraFields=constants.CH2_CUSTOMER_EXTRA_FIELDS["NOT_SET"],
                  ordersExtraFields=constants.CH2_ORDERS_EXTRA_FIELDS["NOT_SET"],
@@ -411,7 +423,6 @@ class MongodbDriver(AbstractDriver):
             self.client_id = clientId;
             self.client = MongoClient(uri, server_api=ServerApi('1'))
             self.client.admin.command('ping')
-            print("Pinged your deployment. You successfully connected to MongoDB!")
             self.database = self.client["ch2"]
             self.denormalize = False
             self.schema = schema
@@ -506,7 +517,7 @@ class MongodbDriver(AbstractDriver):
 
         logging.debug("Loading %d tuples for tableName %s" % (len(tuples), tableName))
         
-        assert tableName in TABLE_COLUMNS, "Unexpected table %s" % tableName
+        assert tableName in CH2_TABLE_COLUMNS, "Unexpected table %s" % tableName
 
         collection = self.collections[tableName]
         # For bulk load: load in batches
@@ -516,7 +527,7 @@ class MongodbDriver(AbstractDriver):
             val = self.getOneDoc(tableName, t, False)
             cur_batch.append(val)
             cur_size += 1
-            if cur_size > 10000: #self.bulkload_batch_size:
+            if cur_size >= 10000: #self.bulkload_batch_size:
                 result = self.tryBulkLoad(collection, cur_batch)
                 if result == True:
                     cur_batch = []
@@ -537,7 +548,7 @@ class MongodbDriver(AbstractDriver):
             return self.getOneCH2PPDoc(tableName, tuple, denorm)
 
     def getOneCH2Doc(self, tableName, tuple, denorm):
-        columns = TABLE_COLUMNS[tableName]
+        columns = CH2_TABLE_COLUMNS[tableName]
         if denorm:
             val = tuple
         else:
@@ -548,6 +559,9 @@ class MongodbDriver(AbstractDriver):
                     v1 = []
                     for olv in v:
                         v1.append(self.genNestedTuple(olv, constants.MONGO_TABLENAME_ORDERLINE))
+                elif (tableName == constants.MONGO_TABLENAME_ITEM and columns[l] == "i_categories" or
+                     tableName == constants.MONGO_TABLENAME_CUSTOMER and columns[l] == "c_item_categories"):
+                    continue
                 elif tableName == constants.MONGO_TABLENAME_CUSTOMER and columns[l] == "c_extra":
                     for i in range(0, self.customerExtraFields):
                         val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
@@ -622,7 +636,7 @@ class MongodbDriver(AbstractDriver):
 
     def genNestedTuple(self, tuple, tableName):
         if self.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
-            columns = TABLE_COLUMNS[tableName]
+            columns = CH2_TABLE_COLUMNS[tableName]
         else:
             columns = CH2PP_TABLE_COLUMNS[tableName]
         rval = {}
