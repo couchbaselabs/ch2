@@ -34,10 +34,8 @@ import sys
 
 import logging
 import uuid
-import numpy as np
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-from random import shuffle, randrange, sample
 from pprint import pprint,pformat
 
 import constants
@@ -45,7 +43,7 @@ from util import *
 
 class Loader:
     
-    def __init__(self, driver, scaleParameters, w_ids, needLoadItems, customerExtraFields, ordersExtraFields, itemExtraFields):
+    def __init__(self, driver, scaleParameters, w_ids, needLoadItems, customerExtraFields, ordersExtraFields, itemExtraFields, datagenSeed):
         self.driver = driver
         self.scaleParameters = scaleParameters
         self.w_ids = w_ids
@@ -54,7 +52,9 @@ class Loader:
         self.ordersExtraFields = ordersExtraFields
         self.itemExtraFields = itemExtraFields
         self.batch_size = 2500
-        self.numSecsPerDay = 86400        
+        self.numSecsPerDay = 86400
+        self.datagenSeed = datagenSeed
+
     ## ==============================================
     ## execute
     ## ==============================================
@@ -63,6 +63,7 @@ class Loader:
         ## Item Table
         if self.needLoadItems:
             logging.debug("Loading ITEM table")
+            self.randomGen = rand.Rand(self.datagenSeed)
             self.loadItems()
             self.driver.loadFinishItem()
 
@@ -73,6 +74,7 @@ class Loader:
             
         ## Then create the warehouse-specific tuples
         for w_id in self.w_ids:
+            self.randomGen = rand.Rand(self.datagenSeed*w_id)
             self.loadWarehouse(w_id)
             self.driver.loadFinishWarehouse(w_id)
         ## FOR
@@ -84,8 +86,8 @@ class Loader:
     ## ==============================================
     def loadItems(self):
         ## Select 10% of the rows to be marked "original"
-        originalRows = rand.selectUniqueIds(self.scaleParameters.items // 10, 1, self.scaleParameters.items)
-        
+        originalRows = self.randomGen.selectUniqueIds(self.scaleParameters.items // 10, 1, self.scaleParameters.items)
+
         ## Load all of the items
         tuples = [ ]
         total_tuples = 0
@@ -120,7 +122,20 @@ class Loader:
         endOrderDate = endDate - timedelta(days=151)
         startOrderLineDayRange = 2
         endOrderLineDayRange = 151
-        cum_h_amount_per_warehouse = 0                    
+        cum_h_amount_per_warehouse = 0
+        #w_ytd
+        w_ytd_idx = 1
+        #d_ytd
+        d_ytd_idx = 2
+        ## h_amount
+        h_amount_idx = 6
+        #ol_amount
+        ol_amount_idx = 5
+        # use c_since as orderDate
+        if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
+            c_balance_idx, c_ytd_payment_idx, c_since_idx = 9, 10, 20
+        else:
+            c_balance_idx, c_ytd_payment_idx, c_since_idx,  = 7, 8, 14
 
         ## WAREHOUSE
         w_tuples =  self.generateWarehouse(w_id)
@@ -136,7 +151,7 @@ class Loader:
             h_tuples = [ ]
             
             ## Select 10% of the customers to have bad credit
-            selectedRows = rand.selectUniqueIds(self.scaleParameters.customersPerDistrict // 10, 1, self.scaleParameters.customersPerDistrict)
+            selectedRows = self.randomGen.selectUniqueIds(self.scaleParameters.customersPerDistrict // 10, 1, self.scaleParameters.customersPerDistrict)
             
             ## TPC-C 4.3.3.1. says that o_c_id should be a permutation of [1, 3000]. But since it
             ## is a c_id field, it seems to make sense to have it be a permutation of the
@@ -149,34 +164,22 @@ class Loader:
                 c_tuples.append(self.generateCustomer(w_id, d_id, c_id, orderDate, badCredit, True))
                 h_tuples.append(self.generateHistory(w_id, d_id, c_id, orderDate))
                 cIdPermutation.append(c_id)
-                ## h_amount
-                h_amount_idx = 6
                 cum_h_amount_per_district += h_tuples[c_id-1][h_amount_idx]
                 cum_h_amount_per_warehouse += h_tuples[c_id-1][h_amount_idx]
             ## FOR
-            #d_ytd
-            if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
-                d_ytd_idx = 9
-            else:
-                d_ytd_idx = 2
             d_tuples[0][d_ytd_idx] = cum_h_amount_per_district
             assert cIdPermutation[0] == 1
             assert cIdPermutation[self.scaleParameters.customersPerDistrict - 1] == self.scaleParameters.customersPerDistrict
-            shuffle(cIdPermutation)
+            self.randomGen.rng.shuffle(cIdPermutation)
             
             o_tuples = [ ]
             no_tuples = [ ]
             
             for o_id in range(1, self.scaleParameters.customersPerDistrict+1):
-                o_ol_cnt = rand.number(constants.MIN_OL_CNT, constants.MAX_OL_CNT)
+                o_ol_cnt = self.randomGen.number(constants.MIN_OL_CNT, constants.MAX_OL_CNT)
                 
                 ## The last newOrdersPerDistrict are new orders
                 newOrder = ((self.scaleParameters.customersPerDistrict - self.scaleParameters.newOrdersPerDistrict) < o_id)
-                # use c_since as orderDate
-                if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
-                    c_since_idx = 12
-                else:
-                    c_since_idx = 14
                 orderDate = c_tuples[cIdPermutation[o_id-1]-1][c_since_idx]
                 orderTime = self.computeRandomRangeTime(orderDate)
                 o_tuple = self.generateOrder(w_id, d_id, o_id, cIdPermutation[o_id - 1], o_ol_cnt, orderTime, newOrder)
@@ -190,18 +193,12 @@ class Loader:
                     orderLineTime = self.computeRandomRangeTime(orderLineDate)
                     ol_tuple = self.generateOrderLine(w_id, d_id, o_id, ol_number, self.scaleParameters.items, orderLineTime, newOrder)
                     ol_tuples.append(ol_tuple)
-                    #ol_amount
-                    total_ol_amount += ol_tuple[5]
+                    total_ol_amount += ol_tuple[ol_amount_idx]
                 ## FOR
                 o_tuple.append(ol_tuples)
                 o_tuples.append(o_tuple)
-                h_amount = h_tuples[cIdPermutation[o_id-1]-1][6]
+                h_amount = h_tuples[cIdPermutation[o_id-1]-1][h_amount_idx]
                 if not newOrder:
-                    if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
-                        c_balance_idx, c_ytd_payment_idx = 16, 17
-                    else:
-                        c_balance_idx, c_ytd_payment_idx = 7, 8
-
                     c_tuples[cIdPermutation[o_id-1]-1][c_balance_idx] = total_ol_amount - h_amount
                     c_tuples[cIdPermutation[o_id-1]-1][c_ytd_payment_idx] = h_amount
                 ## This is a new order: make one for it
@@ -216,13 +213,11 @@ class Loader:
 #            self.driver.loadFinishDistrict(w_id, d_id)
         ## FOR
         #w_ytd
-        if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
-            w_tuples[0][8] = cum_h_amount_per_warehouse
-        else:
-            w_tuples[0][1] = cum_h_amount_per_warehouse
+        w_tuples[0][w_ytd_idx] = cum_h_amount_per_warehouse
+
         ## Select 10% of the stock to be marked "original"
         s_tuples = [ ]
-        selectedRows = rand.selectUniqueIds(self.scaleParameters.items // 10, 1, self.scaleParameters.items)
+        selectedRows = self.randomGen.selectUniqueIds(self.scaleParameters.items // 10, 1, self.scaleParameters.items)
         total_tuples = 0
         for i_id in range(1, self.scaleParameters.items+1):
             original = (i_id in selectedRows)
@@ -247,8 +242,8 @@ class Loader:
         nkeyarr = [0 for i in range(constants.NUM_SUPPLIERS+1)]
         tuples = [ ]
         total_tuples = 0
-        suppRecommendsCommentTuples = sample(list(range(1, constants.NUM_SUPPLIERS+1)), 5)
-        suppComplaintsCommentTuples = sample(list(set(range(1, constants.NUM_SUPPLIERS+1)) - set(suppRecommendsCommentTuples)), 5)
+        suppRecommendsCommentTuples = self.randomGen.rng.sample(list(range(1, constants.NUM_SUPPLIERS+1)), 5)
+        suppComplaintsCommentTuples = self.randomGen.rng.sample(list(set(range(1, constants.NUM_SUPPLIERS+1)) - set(suppRecommendsCommentTuples)), 5)
         for i in range(1, constants.NUM_SUPPLIERS+1):
             tuples.append(self.generateSupplier(i, suppRecommendsCommentTuples, suppComplaintsCommentTuples, nkeyarr))
             total_tuples += 1
@@ -306,41 +301,15 @@ class Loader:
     ## generateItem
     ## ==============================================
     def generateItem(self, id, original):
-        if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
-            i_tuples = self.generateCH2Item(id, original)
-        else:
-            i_tuples = self.generateCH2PPItem(id, original)
-        return i_tuples
-
-    ## ==============================================
-    ## generateCH2Item
-    ## ==============================================
-    def generateCH2Item(self, id, original):
         i_id = id
-        i_im_id = rand.number(constants.MIN_IM, constants.MAX_IM)
-        i_name = rand.astring(constants.MIN_I_NAME, constants.MAX_I_NAME)
-        i_price = rand.fixedPoint(constants.MONEY_DECIMALS, constants.MIN_PRICE, constants.MAX_PRICE)
-        i_data = rand.astring(constants.MIN_I_DATA, constants.MAX_I_DATA)
-        if original: i_data = self.fillOriginal(i_data)
-
-        i_tuple = [i_id, i_im_id, i_name, i_price, i_data]
-        i_tuple.append(self.generateExtraFields(self.itemExtraFields))
-        return i_tuple
-    ## DEF
-
-    ## ==============================================
-    ## generateCH2PPItem
-    ## ==============================================
-    def generateCH2PPItem(self, id, original):
-        i_id = id
-        i_im_id = rand.number(constants.MIN_IM, constants.MAX_IM)
-        i_name = rand.astring(constants.MIN_I_NAME, constants.MAX_I_NAME)
-        i_price = rand.fixedPoint(constants.MONEY_DECIMALS, constants.MIN_PRICE, constants.MAX_PRICE)
-        i_data = rand.astring(constants.MIN_I_DATA, constants.MAX_I_DATA)
+        i_im_id = self.randomGen.number(constants.MIN_IM, constants.MAX_IM)
+        i_name = self.randomGen.astring(constants.MIN_I_NAME, constants.MAX_I_NAME)
+        i_price = self.randomGen.fixedPoint(constants.MONEY_DECIMALS, constants.MIN_PRICE, constants.MAX_PRICE)
+        i_data = self.randomGen.astring(constants.MIN_I_DATA, constants.MAX_I_DATA)
         if original: i_data = self.fillOriginal(i_data)
         i_tuple = [i_id, i_name, i_price]
         i_tuple.append(self.generateExtraFields(self.itemExtraFields))
-        i_category_num = np.random.choice(range(1, 128), size=np.random.randint(1,3), replace=False)
+        i_category_num = self.randomGen.nprng.choice(range(1, 128), size=self.randomGen.nprng.integers(1,3), replace=False)
         i_categories = []
         for i in i_category_num:
             i_categories.append("category_" + str(format(i, "03d")))
@@ -354,127 +323,46 @@ class Loader:
     ## generateWarehouse
     ## ==============================================
     def generateWarehouse(self, w_id):
-        if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
-            w_tuples = [ self.generateCH2Warehouse(w_id) ]
-        else:
-            w_tuples = [ self.generateCH2PPWarehouse(w_id) ]
-        return w_tuples
-    ## DEF
-
-
-    ## ==============================================
-    ## generateCH2Warehouse
-    ## ==============================================
-    def generateCH2Warehouse(self, w_id):
-        w_tax = self.generateTax()
-        w_ytd = constants.INITIAL_W_YTD
-        w_address = self.generateNameAndAddress()
-        return [w_id] + w_address + [w_tax, w_ytd]
-    ## DEF
-
-    ## ==============================================
-    ## generateCH2PPWarehouse
-    ## ==============================================
-    def generateCH2PPWarehouse(self, w_id):
         w_ytd = constants.INITIAL_W_YTD
         w_tax = self.generateTax()
-        w_name = rand.astring(constants.MIN_NAME, constants.MAX_NAME)
+        w_name = self.randomGen.astring(constants.MIN_NAME, constants.MAX_NAME)
         w_tuple = [w_id, w_ytd, w_tax, w_name]
-        w_tuple.append(self.generateStreetAddress())
-        return w_tuple
+        w_address = self.generateStreetAddress()
+        if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
+            w_tuple += w_address
+        else:
+            w_tuple.append(w_address)
+        return [w_tuple]
     ## DEF
 
     ## ==============================================
     ## generateDistrict
     ## ==============================================
     def generateDistrict(self, d_w_id, d_id, d_next_o_id):
-        if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
-            d_tuples = [ self.generateCH2District(d_w_id, d_id, d_next_o_id) ]
-        else:
-            d_tuples = [ self.generateCH2PPDistrict(d_w_id, d_id, d_next_o_id) ]
-        return d_tuples
-
-
-    ## ==============================================
-    ## generateCH2District
-    ## ==============================================
-    def generateCH2District(self, d_w_id, d_id, d_next_o_id):
-        d_tax = self.generateTax()
-        d_ytd = constants.INITIAL_D_YTD
-        d_address = self.generateNameAndAddress()
-        return [d_id, d_w_id] + d_address + [d_tax, d_ytd, d_next_o_id]
-    ## DEF
-
-    ## ==============================================
-    ## generateCH2PPDistrict
-    ## ==============================================
-    def generateCH2PPDistrict(self, d_w_id, d_id, d_next_o_id):
         d_ytd = constants.INITIAL_W_YTD
         d_tax = self.generateTax()
-        d_name = rand.astring(constants.MIN_NAME, constants.MAX_NAME)
+        d_name = self.randomGen.astring(constants.MIN_NAME, constants.MAX_NAME)
+        d_address = self.generateStreetAddress()
         d_tuple = [d_id, d_w_id, d_ytd, d_tax, d_next_o_id, d_name]
-        d_tuple.append(self.generateStreetAddress())
-        return d_tuple
+        if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
+            d_tuple += d_address
+        else:
+            d_tuple.append(d_address)
+        return [d_tuple]
     ## DEF
-
 
     ## ==============================================
     ## generateCustomer
     ## ==============================================
     def generateCustomer(self, c_w_id, c_d_id, c_id, sinceDate, badCredit, doesReplicateName):
-        if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
-            c_tuples = self.generateCH2Customer(c_w_id, c_d_id, c_id, sinceDate, badCredit, doesReplicateName)
-        else:
-            c_tuples = self.generateCH2PPCustomer(c_w_id, c_d_id, c_id, sinceDate, badCredit, doesReplicateName)
-        return c_tuples
-
-    ## ==============================================
-    ## generateCH2Customer
-    ## ==============================================
-    def generateCH2Customer(self, c_w_id, c_d_id, c_id, sinceDate, badCredit, doesReplicateName):
-        c_first = rand.astring(constants.MIN_FIRST, constants.MAX_FIRST)
-        c_middle = constants.MIDDLE
-        assert 1 <= c_id and c_id <= constants.CUSTOMERS_PER_DISTRICT
-        if c_id <= 1000:
-            c_last = rand.makeLastName(c_id - 1)
-        else:
-            c_last = rand.makeRandomLastName(constants.CUSTOMERS_PER_DISTRICT)
-        c_phone = rand.nstring(constants.PHONE, constants.PHONE)
-        c_since = sinceDate
-        c_credit = constants.BAD_CREDIT if badCredit else constants.GOOD_CREDIT
-        c_credit_lim = constants.INITIAL_CREDIT_LIM
-        c_discount = rand.fixedPoint(constants.DISCOUNT_DECIMALS, constants.MIN_DISCOUNT, constants.MAX_DISCOUNT)
-        c_balance = constants.INITIAL_BALANCE
-        c_ytd_payment = constants.INITIAL_YTD_PAYMENT
-        c_payment_cnt = constants.INITIAL_PAYMENT_CNT
-        c_delivery_cnt = constants.INITIAL_DELIVERY_CNT
-        c_data = rand.astring(constants.MIN_C_DATA, constants.MAX_C_DATA)
-
-        c_street1 = rand.astring(constants.MIN_STREET, constants.MAX_STREET)
-        c_street2 = rand.astring(constants.MIN_STREET, constants.MAX_STREET)
-        c_city = rand.astring(constants.MIN_CITY, constants.MAX_CITY)
-        c_state = rand.randomStringLength(constants.STATE) # CH benchmark needs c_state to be
-                                                           # upper and lower case and digits
-        c_zip = self.generateZip()
-
-        c_tuple = [ c_id, c_d_id, c_w_id, c_first, c_middle, c_last, \
-                    c_street1, c_street2, c_city, c_state, c_zip, \
-                    c_phone, c_since, c_credit, c_credit_lim, c_discount, c_balance, \
-                    c_ytd_payment, c_payment_cnt, c_delivery_cnt, c_data ]
-        c_tuple.append(self.generateExtraFields(self.customerExtraFields))
-        return c_tuple
-    ## DEF
-
-    ## ==============================================
-    ## generateCH2PPCustomer
-    ## ==============================================
-    def generateCH2PPCustomer(self, c_w_id, c_d_id, c_id, sinceDate, badCredit, doesReplicateName):
-        c_discount = rand.fixedPoint(constants.DISCOUNT_DECIMALS, constants.MIN_DISCOUNT, constants.MAX_DISCOUNT)
+        c_discount = self.randomGen.fixedPoint(constants.DISCOUNT_DECIMALS, constants.MIN_DISCOUNT, constants.MAX_DISCOUNT)
         c_credit = constants.BAD_CREDIT if badCredit else constants.GOOD_CREDIT
         c_tuple = [ c_id, c_d_id, c_w_id, c_discount, c_credit ]
-
-        c_tuple.append(self.generateCustomerFullName(c_id))
-
+        c_name = self.generateCustomerFullName(c_id)
+        if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
+            c_tuple += c_name
+        else:
+            c_tuple.append(c_name)
         c_credit_lim = constants.INITIAL_CREDIT_LIM
         c_balance = constants.INITIAL_BALANCE
         c_ytd_payment = constants.INITIAL_YTD_PAYMENT
@@ -485,21 +373,29 @@ class Loader:
         c_tuple.append(self.generateExtraFields(self.customerExtraFields))
 
         c_addresses = self.generateCustomerAddresses()
-        c_tuple.append(c_addresses)
+        if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
+            c_address = c_addresses[0][1:]
+            c_tuple += c_address
+        else:
+            c_tuple.append(c_addresses)
 
         c_phones = self.generateCustomerPhones()
-        c_tuple.append(c_phones)
+        if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
+            c_phone = c_phones[0][1:]
+            c_tuple += c_phone
+        else:
+            c_tuple.append(c_phones)
 
         c_since = sinceDate
         c_tuple = c_tuple + [c_since]
 
-        c_category_num = np.random.choice(range(1, 128), size=np.random.randint(0,15), replace=False)
+        c_category_num = self.randomGen.nprng.choice(range(1, 128), size=self.randomGen.nprng.integers(0,15), replace=False)
         c_categories = []
         for c in c_category_num:
             c_categories.append("category_" + str(format(c, "03d")))
         c_tuple.append(c_categories)
 
-        c_data = rand.astring(constants.MIN_C_DATA, constants.MAX_C_DATA)
+        c_data = self.randomGen.astring(constants.MIN_C_DATA, constants.MAX_C_DATA)
         c_tuple.append(c_data)
 
         return c_tuple
@@ -509,32 +405,9 @@ class Loader:
     ## generateOrder
     ## ==============================================
     def generateOrder(self, o_w_id, o_d_id, o_id, o_c_id, o_ol_cnt, orderTime, newOrder):
-        if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
-            o_tuples = self.generateCH2Order(o_w_id, o_d_id, o_id, o_c_id, o_ol_cnt, orderTime, newOrder)
-        else:
-            o_tuples = self.generateCH2PPOrder(o_w_id, o_d_id, o_id, o_c_id, o_ol_cnt, orderTime, newOrder)
-        return o_tuples
-
-    ## ==============================================
-    ## generateCH2Order
-    ## ==============================================
-    def generateCH2Order(self, o_w_id, o_d_id, o_id, o_c_id, o_ol_cnt, orderTime, newOrder):
         """Returns the generated o_ol_cnt value."""
         o_entry_d = orderTime
-        o_carrier_id = constants.NULL_CARRIER_ID if newOrder else rand.number(constants.MIN_CARRIER_ID, constants.MAX_CARRIER_ID)
-        o_all_local = constants.INITIAL_ALL_LOCAL
-        o_tuple = [ o_id, o_c_id, o_d_id, o_w_id, o_entry_d, o_carrier_id, o_ol_cnt, o_all_local ]
-        o_tuple.append(self.generateExtraFields(self.ordersExtraFields))
-        return o_tuple
-    ## DEF
-
-    ## ==============================================
-    ## generateCH2PPOrder
-    ## ==============================================
-    def generateCH2PPOrder(self, o_w_id, o_d_id, o_id, o_c_id, o_ol_cnt, orderTime, newOrder):
-        """Returns the generated o_ol_cnt value."""
-        o_entry_d = orderTime
-        o_carrier_id = constants.NULL_CARRIER_ID if newOrder else rand.number(constants.MIN_CARRIER_ID, constants.MAX_CARRIER_ID)
+        o_carrier_id = constants.NULL_CARRIER_ID if newOrder else self.randomGen.number(constants.MIN_CARRIER_ID, constants.MAX_CARRIER_ID)
         o_all_local = constants.INITIAL_ALL_LOCAL
         o_tuple = [ o_id, o_c_id, o_d_id, o_w_id, o_carrier_id, o_ol_cnt, o_all_local, o_entry_d ]
         o_tuple.append(self.generateExtraFields(self.ordersExtraFields))
@@ -545,19 +418,19 @@ class Loader:
     ## generateOrderLine
     ## ==============================================
     def generateOrderLine(self, ol_w_id, ol_d_id, ol_o_id, ol_number, max_items, orderLineTime, newOrder):
-        ol_i_id = rand.number(1, max_items)
+        ol_i_id = self.randomGen.number(1, max_items)
         ol_supply_w_id = ol_w_id
         ol_delivery_d = orderLineTime
-        ol_quantity = rand.number(constants.MIN_OL_QUANTITY, constants.MAX_OL_QUANTITY)
+        ol_quantity = self.randomGen.number(constants.MIN_OL_QUANTITY, constants.MAX_OL_QUANTITY)
         if newOrder == False:
             if ol_o_id % 5 == 0:
-                ol_amount = rand.fixedPoint(constants.MONEY_DECIMALS, constants.MIN_AMOUNT, constants.MAX_PRICE * constants.MAX_OL_QUANTITY)
+                ol_amount = self.randomGen.fixedPoint(constants.MONEY_DECIMALS, constants.MIN_AMOUNT, constants.MAX_PRICE * constants.MAX_OL_QUANTITY)
             else:
                 ol_amount = 0.00
         else:
-            ol_amount = rand.fixedPoint(constants.MONEY_DECIMALS, constants.MIN_AMOUNT, constants.MAX_PRICE * constants.MAX_OL_QUANTITY)
+            ol_amount = self.randomGen.fixedPoint(constants.MONEY_DECIMALS, constants.MIN_AMOUNT, constants.MAX_PRICE * constants.MAX_OL_QUANTITY)
             ol_delivery_d = None
-        ol_dist_info = rand.astring(constants.DIST, constants.DIST)
+        ol_dist_info = self.randomGen.astring(constants.DIST, constants.DIST)
 
         return [ ol_number, ol_i_id, ol_supply_w_id, ol_delivery_d, ol_quantity, ol_amount, ol_dist_info ]
     ## DEF
@@ -566,55 +439,25 @@ class Loader:
     ## generateStock
     ## ==============================================
     def generateStock(self, s_w_id, s_i_id, original):
-        if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
-            s_tuples = self.generateCH2Stock(s_w_id, s_i_id, original)
-        else:
-            s_tuples = self.generateCH2PPStock(s_w_id, s_i_id, original)
-        return s_tuples
-
-    ## ==============================================
-    ## generateCH2Stock
-    ## ==============================================
-    def generateCH2Stock(self, s_w_id, s_i_id, original):
-        s_quantity = rand.number(constants.MIN_QUANTITY, constants.MAX_QUANTITY)
+        s_quantity = self.randomGen.number(constants.MIN_QUANTITY, constants.MAX_QUANTITY)
         s_ytd = 0
-        s_order_cnt = rand.number(constants.DISTRICTS_PER_WAREHOUSE, constants.INITIAL_ORDERS_PER_DISTRICT)
-        if len(self.w_ids) == 1:
-            s_remote_cnt = 0
-        else:
-            s_remote_cnt = int(s_order_cnt * 0.1) # 10% of orders are remote
-        s_data = rand.astring(constants.MIN_I_DATA, constants.MAX_I_DATA)
-        if original: self.fillOriginal(s_data)
-
-        s_dists = [ ]
-        for i in range(0, constants.DISTRICTS_PER_WAREHOUSE):
-            s_dists.append(rand.astring(constants.DIST, constants.DIST))
-        
-        return [ s_i_id, s_w_id, s_quantity ] + \
-               s_dists + \
-               [ s_ytd, s_order_cnt, s_remote_cnt, s_data ]
-    ## DEF
-
-    ## ==============================================
-    ## generateCH2PPStock
-    ## ==============================================
-    def generateCH2PPStock(self, s_w_id, s_i_id, original):
-        s_quantity = rand.number(constants.MIN_QUANTITY, constants.MAX_QUANTITY)
-        s_ytd = 0
-        s_order_cnt = rand.number(constants.DISTRICTS_PER_WAREHOUSE, constants.INITIAL_ORDERS_PER_DISTRICT)
+        s_order_cnt = self.randomGen.number(constants.DISTRICTS_PER_WAREHOUSE, constants.INITIAL_ORDERS_PER_DISTRICT)
         if len(self.w_ids) == 1:
             s_remote_cnt = 0
         else:
             s_remote_cnt = int(s_order_cnt * 0.1) # 10% of orders are remote
 
-        s_data = rand.astring(constants.MIN_I_DATA, constants.MAX_I_DATA)
+        s_data = self.randomGen.astring(constants.MIN_I_DATA, constants.MAX_I_DATA)
         if original: self.fillOriginal(s_data)
 
         s_dists = [ ]
         for i in range(0, constants.DISTRICTS_PER_WAREHOUSE):
-            s_dists.append(rand.astring(constants.DIST, constants.DIST))
+            s_dists.append(self.randomGen.astring(constants.DIST, constants.DIST))
         s_tuple = [ s_i_id, s_w_id, s_quantity, s_ytd, s_order_cnt, s_remote_cnt, s_data ]
-        s_tuple.append(s_dists)
+        if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
+            s_tuple += s_dists
+        else:
+            s_tuple.append(s_dists)
         return s_tuple
     ## DEF
 
@@ -626,7 +469,7 @@ class Loader:
         h_d_id = h_c_d_id
         h_date = historyDate
         h_amount = constants.INITIAL_AMOUNT
-        h_data = rand.astring(constants.MIN_DATA, constants.MAX_DATA)
+        h_data = self.randomGen.astring(constants.MIN_DATA, constants.MAX_DATA)
         return [ h_c_id, h_c_d_id, h_c_w_id, h_d_id, h_w_id, h_date, h_amount, h_data ]
     ## DEF
 
@@ -634,60 +477,28 @@ class Loader:
     ## generateSupplier
     ## ==============================================
     def generateSupplier(self, suppkey, recommendsCommentTuples, complaintsCommentTuples, nkeyarr):
+        su_suppkey = suppkey
+        su_name = "Supplier#" + str(suppkey).zfill(constants.NUM_LEADING_ZEROS)
+        ch2_su_address = self.generateSupplierAddress()
+        ch2pp_su_address = self.generateStreetAddress()
+        su_nationkey = constants.NATIONS[self.randomGen.number(0, constants.NUM_NATIONS-1)][0]
+        nkeyarr[su_nationkey] += 1
+        while nkeyarr[su_nationkey] > 162:
+            nkeyarr[su_nationkey] -= 1
+            su_nationkey = constants.NATIONS[self.randomGen.number(0, constants.NUM_NATIONS-1)][0]
+            nkeyarr[su_nationkey] += 1
+        su_phone = self.randomGen.nstring(constants.PHONE, constants.PHONE)
+        su_acctbal = self.randomGen.fixedPoint(constants.MONEY_DECIMALS, constants.MIN_SUPPLIER_ACCTBAL, constants.MAX_SUPPLIER_ACCTBAL)
+        if suppkey in recommendsCommentTuples:
+            su_comment = self.randomGen.randomStringsWithEmbeddedSubstrings(constants.MIN_SUPPLIER_COMMENT, constants.MAX_SUPPLIER_COMMENT, "Customer", "Recommends")
+        elif suppkey in complaintsCommentTuples:
+            su_comment = self.randomGen.randomStringsWithEmbeddedSubstrings(constants.MIN_SUPPLIER_COMMENT, constants.MAX_SUPPLIER_COMMENT, "Customer", "Complaints")
+        else:
+            su_comment = self.randomGen.randomStringMinMax(constants.MIN_SUPPLIER_COMMENT, constants.MAX_SUPPLIER_COMMENT)
         if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
-            su_tuples = self.generateCH2Supplier(suppkey, recommendsCommentTuples, complaintsCommentTuples, nkeyarr)
+            su_tuple = [su_suppkey, su_name, ch2_su_address, su_nationkey, su_phone, su_acctbal, su_comment]
         else:
-            su_tuples = self.generateCH2PPSupplier(suppkey, recommendsCommentTuples, complaintsCommentTuples, nkeyarr)
-        return su_tuples
-
-    ## ==============================================
-    ## generateCH2Supplier
-    ## ==============================================
-    def generateCH2Supplier(self, suppkey, recommendsCommentTuples, complaintsCommentTuples, nkeyarr):
-        su_suppkey = suppkey
-        su_name = "Supplier#" + str(suppkey).zfill(constants.NUM_LEADING_ZEROS)
-        su_address = self.generateSupplierAddress()
-        su_nationkey = constants.NATIONS[rand.number(0, constants.NUM_NATIONS-1)][0]
-        nkeyarr[su_nationkey] += 1
-        while nkeyarr[su_nationkey] > 162:
-            nkeyarr[su_nationkey] -= 1
-            su_nationkey = constants.NATIONS[rand.number(0, constants.NUM_NATIONS-1)][0]
-            nkeyarr[su_nationkey] += 1
-        su_phone = rand.nstring(constants.PHONE, constants.PHONE)
-        su_acctbal = rand.fixedPoint(constants.MONEY_DECIMALS, constants.MIN_SUPPLIER_ACCTBAL, constants.MAX_SUPPLIER_ACCTBAL)
-        if suppkey in recommendsCommentTuples:
-            su_comment = rand.randomStringsWithEmbeddedSubstrings(constants.MIN_SUPPLIER_COMMENT, constants.MAX_SUPPLIER_COMMENT, "Customer", "Recommends")
-        elif suppkey in complaintsCommentTuples:
-            su_comment = rand.randomStringsWithEmbeddedSubstrings(constants.MIN_SUPPLIER_COMMENT, constants.MAX_SUPPLIER_COMMENT, "Customer", "Complaints")            
-        else:
-            su_comment = rand.randomStringMinMax(constants.MIN_SUPPLIER_COMMENT, constants.MAX_SUPPLIER_COMMENT)
-
-        return [ su_suppkey, su_name, su_address, su_nationkey, su_phone, su_acctbal, su_comment ]
-    ## DEF
-
-    ## ==============================================
-    ## generateCH2PPSupplier
-    ## ==============================================
-    def generateCH2PPSupplier(self, suppkey, recommendsCommentTuples, complaintsCommentTuples, nkeyarr):
-        su_suppkey = suppkey
-        su_name = "Supplier#" + str(suppkey).zfill(constants.NUM_LEADING_ZEROS)
-        su_address = self.generateStreetAddress()
-        su_nationkey = constants.NATIONS[rand.number(0, constants.NUM_NATIONS-1)][0]
-        nkeyarr[su_nationkey] += 1
-        while nkeyarr[su_nationkey] > 162:
-            nkeyarr[su_nationkey] -= 1
-            su_nationkey = constants.NATIONS[rand.number(0, constants.NUM_NATIONS-1)][0]
-            nkeyarr[su_nationkey] += 1
-        su_phone = rand.nstring(constants.PHONE, constants.PHONE)
-        su_acctbal = rand.fixedPoint(constants.MONEY_DECIMALS, constants.MIN_SUPPLIER_ACCTBAL, constants.MAX_SUPPLIER_ACCTBAL)
-        if suppkey in recommendsCommentTuples:
-            su_comment = rand.randomStringsWithEmbeddedSubstrings(constants.MIN_SUPPLIER_COMMENT, constants.MAX_SUPPLIER_COMMENT, "Customer", "Recommends")
-        elif suppkey in complaintsCommentTuples:
-            su_comment = rand.randomStringsWithEmbeddedSubstrings(constants.MIN_SUPPLIER_COMMENT, constants.MAX_SUPPLIER_COMMENT, "Customer", "Complaints")
-        else:
-            su_comment = rand.randomStringMinMax(constants.MIN_SUPPLIER_COMMENT, constants.MAX_SUPPLIER_COMMENT)
-
-        su_tuple = [su_suppkey, su_name, su_address, su_nationkey, su_phone, su_acctbal, su_comment]
+            su_tuple = [su_suppkey, su_name, ch2pp_su_address, su_nationkey, su_phone, su_acctbal, su_comment]
         return su_tuple
     ## DEF
 
@@ -699,7 +510,7 @@ class Loader:
         n_nationkey = constants.NATIONS[nationkey][0]
         n_name = constants.NATIONS[nationkey][1]
         n_regionkey = constants.NATIONS[nationkey][2]        
-        n_comment = rand.randomStringMinMax(constants.MIN_NATION_COMMENT, constants.MAX_NATION_COMMENT)
+        n_comment = self.randomGen.randomStringMinMax(constants.MIN_NATION_COMMENT, constants.MAX_NATION_COMMENT)
 
         return [ n_nationkey, n_name, n_regionkey, n_comment ]
     ## DEF
@@ -710,7 +521,7 @@ class Loader:
     def generateRegion(self, regionkey):
         r_regionkey = regionkey
         r_name = constants.REGIONS[regionkey]
-        r_comment = rand.randomStringMinMax(constants.MIN_REGION_COMMENT, constants.MAX_REGION_COMMENT)
+        r_comment = self.randomGen.randomStringMinMax(constants.MIN_REGION_COMMENT, constants.MAX_REGION_COMMENT)
 
         return [ r_regionkey, r_name, r_comment ]
     ## DEF
@@ -722,13 +533,13 @@ class Loader:
         """
             Returns a full name (first name, middle name, and last name)
         """
-        c_first = rand.astring(constants.MIN_FIRST, constants.MAX_FIRST)
+        c_first = self.randomGen.astring(constants.MIN_FIRST, constants.MAX_FIRST)
         c_middle = constants.MIDDLE
         assert 1 <= c_id and c_id <= constants.CUSTOMERS_PER_DISTRICT
         if c_id <= 1000:
-            c_last = rand.makeLastName(c_id - 1)
+            c_last = self.randomGen.makeLastName(c_id - 1)
         else:
-            c_last = rand.makeRandomLastName(constants.CUSTOMERS_PER_DISTRICT)
+            c_last = self.randomGen.makeRandomLastName(constants.CUSTOMERS_PER_DISTRICT)
         return [ c_first, c_middle, c_last ]
     ## DEF
 
@@ -741,7 +552,7 @@ class Loader:
         """
         c_addresses = [["shipping"] + self.generateStreetAddress()]
         c_other_addr_type = ["home", "work", "billing"]
-        c_other_addr = np.random.choice(c_other_addr_type, size=np.random.randint(0, 4), replace=False)
+        c_other_addr = self.randomGen.nprng.choice(c_other_addr_type, size=self.randomGen.nprng.integers(0, 4), replace=False)
         for coa in c_other_addr:
             c_addresses.append([coa] + self.generateStreetAddress())
 
@@ -755,11 +566,11 @@ class Loader:
         """
             Returns customer phones
         """
-        c_phones = [["contact"] + [rand.nstring(constants.PHONE, constants.PHONE)]]
+        c_phones = [["contact"] + [self.randomGen.nstring(constants.PHONE, constants.PHONE)]]
         c_other_phone_type = ["home", "work", "mobile"]
-        c_other_phone = np.random.choice(c_other_phone_type, size=np.random.randint(0, 4), replace=False)
+        c_other_phone = self.randomGen.nprng.choice(c_other_phone_type, size=self.randomGen.nprng.integers(0, 4), replace=False)
         for cop in c_other_phone:
-            c_phones.append([cop] + [rand.nstring(constants.PHONE, constants.PHONE)])
+            c_phones.append([cop] + [self.randomGen.nstring(constants.PHONE, constants.PHONE)])
         return c_phones
     ## DEF
 
@@ -767,7 +578,7 @@ class Loader:
     ## generateExtraFields
     ## ==============================================
     def generateExtraFields(self, extraFields):
-        return [uuid.uuid4().hex for _ in range(extraFields)]
+        return [uuid.UUID(int=self.randomGen.rng.getrandbits(128)).hex for _ in range(extraFields)]
 
     ## ==============================================
     ## generateNameAndAddress
@@ -777,7 +588,7 @@ class Loader:
             Returns a name and a street address 
             Used by both generateWarehouse and generateDistrict.
         """
-        name = rand.astring(constants.MIN_NAME, constants.MAX_NAME)
+        name = self.randomGen.astring(constants.MIN_NAME, constants.MAX_NAME)
         return [ name ] + self.generateStreetAddress()
     ## DEF
 
@@ -789,10 +600,10 @@ class Loader:
             Returns a list for a street address
             Used for warehouses, districts and customers.
         """
-        street1 = rand.astring(constants.MIN_STREET, constants.MAX_STREET)
-        street2 = rand.astring(constants.MIN_STREET, constants.MAX_STREET)
-        city = rand.astring(constants.MIN_CITY, constants.MAX_CITY)
-        state = rand.astring(constants.STATE, constants.STATE)
+        street1 = self.randomGen.astring(constants.MIN_STREET, constants.MAX_STREET)
+        street2 = self.randomGen.astring(constants.MIN_STREET, constants.MAX_STREET)
+        city = self.randomGen.astring(constants.MIN_CITY, constants.MAX_CITY)
+        state = self.randomGen.astring(constants.STATE, constants.STATE)
         zip = self.generateZip()
 
         return [ street1, street2, city, state, zip ]
@@ -805,7 +616,7 @@ class Loader:
         """
             Returns address of supplier
         """
-        address = rand.astring(constants.MIN_SUPPLIER_ADDRESS, constants.MAX_SUPPLIER_ADDRESS)
+        address = self.randomGen.astring(constants.MIN_SUPPLIER_ADDRESS, constants.MAX_SUPPLIER_ADDRESS)
         return address 
     ## DEF
 
@@ -813,7 +624,7 @@ class Loader:
     ## generateTax
     ## ==============================================
     def generateTax(self):
-        return rand.fixedPoint(constants.TAX_DECIMALS, constants.MIN_TAX, constants.MAX_TAX)
+        return self.randomGen.fixedPoint(constants.TAX_DECIMALS, constants.MIN_TAX, constants.MAX_TAX)
     ## DEF
 
     ## ==============================================
@@ -821,7 +632,7 @@ class Loader:
     ## ==============================================
     def generateZip(self):
         length = constants.ZIP_LENGTH - len(constants.ZIP_SUFFIX)
-        return rand.nstring(length, length) + constants.ZIP_SUFFIX
+        return self.randomGen.nstring(length, length) + constants.ZIP_SUFFIX
     ## DEF
 
     ## ==============================================
@@ -832,7 +643,7 @@ class Loader:
             a string with ORIGINAL_STRING at a random position
         """
         originalLength = len(constants.ORIGINAL_STRING)
-        position = rand.number(0, len(data) - originalLength)
+        position = self.randomGen.number(0, len(data) - originalLength)
         out = data[:position] + constants.ORIGINAL_STRING + data[position + originalLength:]
         assert len(out) == len(data)
         return out
@@ -850,7 +661,7 @@ class Loader:
     def computeRandomRangeDate(self, startDate, endDate):
          delta = endDate - startDate
          deltaSecs = (delta.days * self.numSecsPerDay) + delta.seconds
-         randomTime = randrange(deltaSecs)
+         randomTime = self.randomGen.rng.randrange(deltaSecs)
          return startDate + timedelta(seconds=randomTime)
     ## DEF
 
@@ -859,6 +670,3 @@ class Loader:
     ## DEF
 
 ## CLASS
-
-
-
