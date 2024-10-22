@@ -292,11 +292,11 @@ class Executor:
     ## DEF
 
     def makeCustomerId(self):
-        return self.randomGen.NURand(1023, 1, self.scaleParameters.customersPerDistrict)
+        return self.randomGen.nuRand(1023, 1, self.scaleParameters.customersPerDistrict)
     ## DEF
 
     def makeItemId(self):
-        return self.randomGen.NURand(8191, 1, self.scaleParameters.items)
+        return self.randomGen.nuRand(8191, 1, self.scaleParameters.items)
     ## DEF
 ## CLASS
 
