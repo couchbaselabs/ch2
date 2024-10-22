@@ -42,7 +42,6 @@ import constants
 from util import *
 from runtime import *
 import drivers
-from random import randint
 
 logging.basicConfig(level = logging.INFO,
                     format="%(asctime)s [%(funcName)s:%(lineno)03d] %(levelname)-5s: %(message)s",
@@ -72,7 +71,7 @@ def getDrivers():
 ## ==============================================
 ## startLoading
 ## ==============================================
-def startLoading(driverClass, schema, scaleParameters, args, config, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size):
+def startLoading(driverClass, schema, scaleParameters, args, config, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size, datagenSeed):
     numClients = args['tclients'] + args['aclients']
     logging.debug("Creating client pool with %d processes" % numClients)
     pool = multiprocessing.Pool(numClients)
@@ -87,7 +86,7 @@ def startLoading(driverClass, schema, scaleParameters, args, config, customerExt
 
     loader_results = [ ]
     for i in range(numClients):
-        r = pool.apply_async(loaderFunc, (i, driverClass, schema, scaleParameters, args, config, w_ids[i], customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size, debug))
+        r = pool.apply_async(loaderFunc, (i, driverClass, schema, scaleParameters, args, config, w_ids[i], customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size, datagenSeed, debug))
         loader_results.append(r)
     ## FOR
 
@@ -99,8 +98,8 @@ def startLoading(driverClass, schema, scaleParameters, args, config, customerExt
 ## ==============================================
 ## loaderFunc
 ## ==============================================
-def loaderFunc(clientId, driverClass, schema, scaleParameters, args, config, w_ids, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size, debug):
-    driver = driverClass(args['ddl'], clientId, "L", schema, 0, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size)
+def loaderFunc(clientId, driverClass, schema, scaleParameters, args, config, w_ids, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size, datagenSeed, debug):
+    driver = driverClass(args['ddl'], clientId, "L", schema, {}, 0, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size)
     assert driver != None
     logging.debug("Starting client execution: %s [warehouses=%d]" % (driver, len(w_ids)))
 
@@ -111,7 +110,7 @@ def loaderFunc(clientId, driverClass, schema, scaleParameters, args, config, w_i
 
     try:
         loadItems = (1 in w_ids)
-        l = loader.Loader(driver, scaleParameters, w_ids, loadItems, customerExtraFields, ordersExtraFields, itemExtraFields)
+        l = loader.Loader(driver, scaleParameters, w_ids, loadItems, customerExtraFields, ordersExtraFields, itemExtraFields, datagenSeed)
         driver.loadStart()
         l.execute()
         driver.loadFinish()
@@ -127,7 +126,7 @@ def loaderFunc(clientId, driverClass, schema, scaleParameters, args, config, w_i
 ## ==============================================
 ## startExecution
 ## ==============================================
-def startExecution(driverClass, schema, analyticalQueries, qDone, warmupDurationQ, warmupDuration, warmupQueryIterations, scaleParameters, args, config):
+def startExecution(driverClass, schema, preparedTransactionQueries, analyticalQueries, qDone, warmupDurationQ, warmupDuration, warmupQueryIterations, scaleParameters, args, config):
     numTClients = args['tclients']
     numAClients = args['aclients']
     numClients = numTClients + numAClients
@@ -146,7 +145,7 @@ def startExecution(driverClass, schema, analyticalQueries, qDone, warmupDuration
         else:
             TAFlag = "T"
 
-        r = pool.apply_async(executorFunc, (i, TAFlag, driverClass, schema, analyticalQueries, qDone, warmupDurationQ, warmupDuration, warmupQueryIterations, numAClients, scaleParameters, args, config, debug))
+        r = pool.apply_async(executorFunc, (i, TAFlag, driverClass, schema, preparedTransactionQueries, analyticalQueries, qDone, warmupDurationQ, warmupDuration, warmupQueryIterations, numAClients, scaleParameters, args, config, debug))
         worker_results.append(r)
 
     ## FOR
@@ -173,8 +172,8 @@ def startExecution(driverClass, schema, analyticalQueries, qDone, warmupDuration
 ## ==============================================
 ## executorFunc
 ## ==============================================
-def executorFunc(clientId, TAFlag, driverClass, schema, analyticalQueries, qDone, warmupDurationQ, warmupDuration, warmupQueryIterations, numAClients, scaleParameters, args, config, debug):
-    driver = driverClass(args['ddl'], clientId, TAFlag, schema, analyticalQueries)
+def executorFunc(clientId, TAFlag, driverClass, schema, preparedTransactionQueries, analyticalQueries, qDone, warmupDurationQ, warmupDuration, warmupQueryIterations, numAClients, scaleParameters, args, config, debug):
+    driver = driverClass(args['ddl'], clientId, TAFlag, schema, preparedTransactionQueries, analyticalQueries)
     assert driver != None
     logging.debug("Starting client execution: %s" % driver)
 
@@ -243,6 +242,8 @@ if __name__ == '__main__':
                          help='Disable loading the data')
     aparser.add_argument('--no-execute', action='store_true',
                          help='Disable executing the workload')
+    aparser.add_argument('--datagenSeed', default=constants.CH2_DATAGEN_SEED_NOT_SET, type=int,
+                         help='seed for reproducibility of generated data')
     aparser.add_argument('--datasvc-bulkload', action='store_true',
                          help='Enable bulk loading the data through the data service')
     aparser.add_argument('--kv-timeout', type=int,
@@ -363,6 +364,7 @@ if __name__ == '__main__':
         schema = constants.CH2_DRIVER_SCHEMA["CH2PP"]
     if args['nonOptimizedQueries']:
         analyticalQueries = constants.CH2_DRIVER_ANALYTICAL_QUERIES["NON_OPTIMIZED_QUERIES"]
+    datagenSeed = args['datagenSeed']
     customerExtraFields = args['customerExtraFields']
     if customerExtraFields == constants.CH2_CUSTOMER_EXTRA_FIELDS["NOT_SET"]:
         customerExtraFields = constants.CH2_CUSTOMER_EXTRA_FIELDS[schema]
@@ -464,16 +466,17 @@ if __name__ == '__main__':
     ## Create a handle to the target client driver
     driverClass = createDriverClass(args['system'])
     assert driverClass != None, "Failed to find '%s' class" % args['system']
+    preparedTransactionQueries = {}
     val = -1
     if args['no_execute']:
          val = 0
-         driver = driverClass(args['ddl'], val, "L", schema, 0, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size)
+         driver = driverClass(args['ddl'], val, "L", schema, preparedTransactionQueries, 0, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size)
     else:
         TAFlag = "T"
         if numTClients == 0:
             TAFlag = "A"
             val = 0
-        driver = driverClass(args['ddl'], val, TAFlag, schema, analyticalQueries)
+        driver = driverClass(args['ddl'], val, TAFlag, schema, preparedTransactionQueries, analyticalQueries)
     assert driver != None, "Failed to create '%s' driver" % args['system']
     if args['print_config']:
         config = driver.makeDefaultConfig()
@@ -500,7 +503,8 @@ if __name__ == '__main__':
 
     ## Create ScaleParameters
     scaleParameters = scaleparameters.makeWithScaleFactor(args['warehouses'], args['starting_warehouse'], args['scalefactor'])
-    rand.setNURand(nurand.makeForLoad())
+    randomGen = rand.Rand()
+    randomGen.setNURand(nurand.makeForLoad(randomGen.rng))
     if args['debug']: logging.debug("Scale Parameters:\n%s" % scaleParameters)
 
     ## DATA LOADER!!!
@@ -510,12 +514,12 @@ if __name__ == '__main__':
         logging.info("Loading CH2 benchmark data using %s" % (driver))
         load_start = time.time()
         if numClients == 1:
-            l = loader.Loader(driver, scaleParameters, range(scaleParameters.starting_warehouse, scaleParameters.ending_warehouse+1), True, customerExtraFields, ordersExtraFields, itemExtraFields)
+            l = loader.Loader(driver, scaleParameters, range(scaleParameters.starting_warehouse, scaleParameters.ending_warehouse+1), True, customerExtraFields, ordersExtraFields, itemExtraFields, datagenSeed)
             driver.loadStart()
             l.execute()
             driver.loadFinish()
         else:
-            startLoading(driverClass, schema, scaleParameters, args, config, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size)
+            startLoading(driverClass, schema, scaleParameters, args, config, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size, datagenSeed)
         load_time = time.time() - load_start
     ## IF
 
@@ -534,13 +538,10 @@ if __name__ == '__main__':
             results = e.execute(duration, queryIterations, warmupDuration, warmupQueryIterations, numAClients)
             driver.executeFinish()
         else:
-            results = startExecution(driverClass, schema, analyticalQueries, qDone, warmupDurationQ, warmupDuration, warmupQueryIterations, scaleParameters, args, config)
+            results = startExecution(driverClass, schema, preparedTransactionQueries, analyticalQueries, qDone, warmupDurationQ, warmupDuration, warmupQueryIterations, scaleParameters, args, config)
             print('Execution Completed')
         assert results
         print (results.show(duration, queryIterations, numClients, numAClients, load_time))
     ## IF
 
 ## MAIN
-
-
-
