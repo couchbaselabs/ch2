@@ -51,7 +51,7 @@ class Rand:
         self.nurandVar = nu
     ## DEF
 
-    def NURand(self, a, x, y):
+    def nuRand(self, a, x, y):
         """A non-uniform random number, as defined by TPC-C 2.1.6. (page 20)."""
         assert x <= y
         #    assert nurand != None
@@ -175,6 +175,6 @@ class Rand:
         """A non-uniform random last name, as defined by TPC-C 4.3.2.3. The name will be limited to maxCID."""
         min_cid = 999
         if (maxCID - 1) < min_cid: min_cid = maxCID - 1
-        return self.makeLastName(self.NURand(255, 0, min_cid))
+        return self.makeLastName(self.nuRand(255, 0, min_cid))
     ## DEF
 ## CLASS
