@@ -71,7 +71,7 @@ def getDrivers():
 ## ==============================================
 ## startLoading
 ## ==============================================
-def startLoading(driverClass, schema, scaleParameters, args, config, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size, datagenSeed):
+def startLoading(driverClass, schema, scaleParameters, args, config, customerExtraFields, ordersExtraFields, itemExtraFields, maxExtraFields, load_mode, kv_timeout, bulkload_batch_size, datagenSeed):
     numClients = args['tclients'] + args['aclients']
     logging.debug("Creating client pool with %d processes" % numClients)
     pool = multiprocessing.Pool(numClients)
@@ -86,7 +86,7 @@ def startLoading(driverClass, schema, scaleParameters, args, config, customerExt
 
     loader_results = [ ]
     for i in range(numClients):
-        r = pool.apply_async(loaderFunc, (i, driverClass, schema, scaleParameters, args, config, w_ids[i], customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size, datagenSeed, debug))
+        r = pool.apply_async(loaderFunc, (i, driverClass, schema, scaleParameters, args, config, w_ids[i], customerExtraFields, ordersExtraFields, itemExtraFields, maxExtraFields, load_mode, kv_timeout, bulkload_batch_size, datagenSeed, debug))
         loader_results.append(r)
     ## FOR
 
@@ -98,7 +98,7 @@ def startLoading(driverClass, schema, scaleParameters, args, config, customerExt
 ## ==============================================
 ## loaderFunc
 ## ==============================================
-def loaderFunc(clientId, driverClass, schema, scaleParameters, args, config, w_ids, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size, datagenSeed, debug):
+def loaderFunc(clientId, driverClass, schema, scaleParameters, args, config, w_ids, customerExtraFields, ordersExtraFields, itemExtraFields, maxExtraFields, load_mode, kv_timeout, bulkload_batch_size, datagenSeed, debug):
     driver = driverClass(args['ddl'], clientId, "L", schema, {}, 0, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size)
     assert driver != None
     logging.debug("Starting client execution: %s [warehouses=%d]" % (driver, len(w_ids)))
@@ -110,7 +110,7 @@ def loaderFunc(clientId, driverClass, schema, scaleParameters, args, config, w_i
 
     try:
         loadItems = (1 in w_ids)
-        l = loader.Loader(driver, scaleParameters, w_ids, loadItems, customerExtraFields, ordersExtraFields, itemExtraFields, datagenSeed)
+        l = loader.Loader(driver, scaleParameters, w_ids, loadItems, maxExtraFields, datagenSeed)
         driver.loadStart()
         l.execute()
         driver.loadFinish()
@@ -365,6 +365,7 @@ if __name__ == '__main__':
     if args['nonOptimizedQueries']:
         analyticalQueries = constants.CH2_DRIVER_ANALYTICAL_QUERIES["NON_OPTIMIZED_QUERIES"]
     datagenSeed = args['datagenSeed']
+    maxExtraFields = constants.MAX_EXTRA_FIELDS
     customerExtraFields = args['customerExtraFields']
     if customerExtraFields == constants.CH2_CUSTOMER_EXTRA_FIELDS["NOT_SET"]:
         customerExtraFields = constants.CH2_CUSTOMER_EXTRA_FIELDS[schema]
@@ -514,12 +515,12 @@ if __name__ == '__main__':
         logging.info("Loading CH2 benchmark data using %s" % (driver))
         load_start = time.time()
         if numClients == 1:
-            l = loader.Loader(driver, scaleParameters, range(scaleParameters.starting_warehouse, scaleParameters.ending_warehouse+1), True, customerExtraFields, ordersExtraFields, itemExtraFields, datagenSeed)
+            l = loader.Loader(driver, scaleParameters, range(scaleParameters.starting_warehouse, scaleParameters.ending_warehouse+1), True, maxExtraFields, datagenSeed)
             driver.loadStart()
             l.execute()
             driver.loadFinish()
         else:
-            startLoading(driverClass, schema, scaleParameters, args, config, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size, datagenSeed)
+            startLoading(driverClass, schema, scaleParameters, args, config, customerExtraFields, ordersExtraFields, itemExtraFields, maxExtraFields, load_mode, kv_timeout, bulkload_batch_size, datagenSeed)
         load_time = time.time() - load_start
     ## IF
 
@@ -545,3 +546,4 @@ if __name__ == '__main__':
     ## IF
 
 ## MAIN
+
