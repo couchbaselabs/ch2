@@ -43,7 +43,7 @@ class Rand:
         self.nurandVar = None # NURand
         self.rng = random.Random()
         self.nprng = np.random.default_rng()
-        if datagenSeed != constants.CH2_DATAGEN_SEED_NOT_SET:
+        if datagenSeed != None and datagenSeed != constants.CH2_DATAGEN_SEED_NOT_SET:
             self.rng.seed(datagenSeed)
             self.nprng = np.random.default_rng(datagenSeed)
 
@@ -178,3 +178,4 @@ class Rand:
         return self.makeLastName(self.nuRand(255, 0, min_cid))
     ## DEF
 ## CLASS
+
