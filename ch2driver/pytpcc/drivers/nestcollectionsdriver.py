@@ -464,9 +464,9 @@ CH2PP_TABLE_COLUMNS = {
         "d_zip", # VARCHAR
     ],
     constants.TABLENAME_CUSTOMER_NAME:    [
-        "c_last", # VARCHAR
         "c_first", # VARCHAR
         "c_middle", # VARCHAR
+        "c_last", # VARCHAR
     ],
     constants.TABLENAME_CUSTOMER_ADDRESSES:    [
         "c_address_kind", # VARCHAR
