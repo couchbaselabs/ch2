@@ -43,14 +43,12 @@ from util import *
 
 class Loader:
     
-    def __init__(self, driver, scaleParameters, w_ids, needLoadItems, customerExtraFields, ordersExtraFields, itemExtraFields, datagenSeed):
+    def __init__(self, driver, scaleParameters, w_ids, needLoadItems, maxExtraFields, datagenSeed):
         self.driver = driver
         self.scaleParameters = scaleParameters
         self.w_ids = w_ids
         self.needLoadItems = needLoadItems
-        self.customerExtraFields = customerExtraFields
-        self.ordersExtraFields = ordersExtraFields
-        self.itemExtraFields = itemExtraFields
+        self.maxExtraFields = maxExtraFields
         self.batch_size = 2500
         self.numSecsPerDay = 86400
         self.datagenSeed = datagenSeed
@@ -63,7 +61,10 @@ class Loader:
         ## Item Table
         if self.needLoadItems:
             logging.debug("Loading ITEM table")
-            self.randomGen = rand.Rand(self.datagenSeed)
+            if self.datagenSeed != constants.CH2_DATAGEN_SEED_NOT_SET:
+                self.randomGen = rand.Rand(self.datagenSeed)
+            else:
+                self.randomGen = rand.Rand()
             self.loadItems()
             self.driver.loadFinishItem()
 
@@ -74,7 +75,10 @@ class Loader:
             
         ## Then create the warehouse-specific tuples
         for w_id in self.w_ids:
-            self.randomGen = rand.Rand(self.datagenSeed*w_id)
+            if self.datagenSeed != constants.CH2_DATAGEN_SEED_NOT_SET:
+                self.randomGen = rand.Rand(self.datagenSeed*w_id)
+            else:
+                self.randomGen = rand.Rand()
             self.loadWarehouse(w_id)
             self.driver.loadFinishWarehouse(w_id)
         ## FOR
@@ -308,7 +312,7 @@ class Loader:
         i_data = self.randomGen.astring(constants.MIN_I_DATA, constants.MAX_I_DATA)
         if original: i_data = self.fillOriginal(i_data)
         i_tuple = [i_id, i_name, i_price]
-        i_tuple.append(self.generateExtraFields(self.itemExtraFields))
+        i_tuple.append(self.generateExtraFields(self.maxExtraFields))
         i_category_num = self.randomGen.nprng.choice(range(1, 128), size=self.randomGen.nprng.integers(1,3), replace=False)
         i_categories = []
         for i in i_category_num:
@@ -370,7 +374,7 @@ class Loader:
         c_delivery_cnt = constants.INITIAL_DELIVERY_CNT
         c_tuple += [c_credit_lim, c_balance, c_ytd_payment, c_payment_cnt, c_delivery_cnt]
 
-        c_tuple.append(self.generateExtraFields(self.customerExtraFields))
+        c_tuple.append(self.generateExtraFields(self.maxExtraFields))
 
         c_addresses = self.generateCustomerAddresses()
         if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
@@ -410,7 +414,7 @@ class Loader:
         o_carrier_id = constants.NULL_CARRIER_ID if newOrder else self.randomGen.number(constants.MIN_CARRIER_ID, constants.MAX_CARRIER_ID)
         o_all_local = constants.INITIAL_ALL_LOCAL
         o_tuple = [ o_id, o_c_id, o_d_id, o_w_id, o_carrier_id, o_ol_cnt, o_all_local, o_entry_d ]
-        o_tuple.append(self.generateExtraFields(self.ordersExtraFields))
+        o_tuple.append(self.generateExtraFields(self.maxExtraFields))
         return o_tuple
     ## DEF
 
@@ -670,3 +674,4 @@ class Loader:
     ## DEF
 
 ## CLASS
+
