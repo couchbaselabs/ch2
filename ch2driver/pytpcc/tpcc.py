@@ -378,7 +378,7 @@ if __name__ == '__main__':
     if customerExtraFields > maxExtraFields or ordersExtraFields > maxExtraFields or itemExtraFields > maxExtraFields:
         logging.info("Cannot specify more than %d extra columns" % maxExtraFields)
         sys.exit(os.EX_DATAERR)
-        
+
     if args['datasvc_bulkload']:
         if load_mode == constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]:
             load_mode = constants.CH2_DRIVER_LOAD_MODE["DATASVC_BULKLOAD"]
