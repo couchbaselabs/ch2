@@ -312,9 +312,9 @@ CH2PP_TABLE_COLUMNS = {
         "d_zip", # VARCHAR
     ],
     constants.MONGO_TABLENAME_CUSTOMER_NAME:    [
-        "c_last", # VARCHAR
         "c_first", # VARCHAR
         "c_middle", # VARCHAR
+        "c_last", # VARCHAR
     ],
     constants.MONGO_TABLENAME_CUSTOMER_ADDRESSES:    [
         "c_address_kind", # VARCHAR
