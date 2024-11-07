@@ -63,6 +63,119 @@ class AbstractDriver(object):
             ret += "\n\n# %s\n%-20s = %s" % (desc, name, default) 
         return (ret)
         
+    def getOneDoc(self, tableName, tuple, generateKey=False):
+        if self.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
+            return self.getOneCH2Doc(tableName, tuple, generateKey)
+        else:
+            return self.getOneCH2PPDoc(tableName, tuple, generateKey)
+
+    def getOneCH2Doc(self, tableName, tuple, generateKey):
+        columns = constants.CH2_TABLE_COLUMNS[tableName]
+        key = ""
+        if generateKey:
+            for l, k in enumerate(constants.KEYNAMES[tableName]):
+                if l == 0:
+                    key = str(tuple[k])
+                else:
+                    key = key + '.' + str(tuple[k])
+        val = {}
+        for l, v in enumerate(tuple):
+            v1 = tuple[l]
+            if tableName == constants.TABLENAME_ORDERS and columns[l] == "o_orderline":
+                v1 = []
+                for olv in v:
+                    v1.append(self.genNestedTuple(olv, constants.TABLENAME_ORDERLINE))
+            elif (tableName == constants.TABLENAME_ITEM and columns[l] == "i_categories" or
+                  tableName == constants.TABLENAME_CUSTOMER and columns[l] == "c_item_categories"):
+                continue
+            elif tableName == constants.TABLENAME_CUSTOMER and columns[l] == "c_extra":
+                for i in range(0, self.customerExtraFields):
+                    val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                continue
+            elif tableName == constants.TABLENAME_ORDERS and columns[l] == "o_extra":
+                for i in range(0, self.ordersExtraFields):
+                    val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                continue
+            elif tableName == constants.TABLENAME_ITEM and columns[l] == "i_extra":
+                for i in range(0, self.itemExtraFields):
+                    val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                continue
+            elif isinstance(v1,(datetime)):
+                v1 = str(v1)
+            val[columns[l]] = v1
+
+        return key, val
+
+    def getOneCH2PPDoc(self, tableName, tuple, generateKey):
+        columns = constants.CH2PP_TABLE_COLUMNS[tableName]
+        key = ""
+        if generateKey:
+            for l, k in enumerate(constants.KEYNAMES[tableName]):
+                if l == 0:
+                    key = str(tuple[k])
+                else:
+                    key = key + '.' + str(tuple[k])
+        val = {}
+        for l, v in enumerate(tuple):
+            v1 = tuple[l]
+            if isinstance(v1,(datetime)):
+                v1 = str(v1)
+            elif tableName == constants.TABLENAME_ORDERS and columns[l] == "o_orderline":
+                v1 = []
+                for olv in v:
+                    v1.append(self.genNestedTuple(olv, constants.TABLENAME_ORDERLINE))
+            elif (self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"] and
+                  (tableName == constants.TABLENAME_ITEM and columns[l] == "i_categories" or
+                   tableName == constants.TABLENAME_CUSTOMER and columns[l] == "c_item_categories")):
+                continue
+            elif tableName == constants.TABLENAME_WAREHOUSE and columns[l] == "w_address":
+                v1 = self.genNestedTuple(v, constants.TABLENAME_WAREHOUSE_ADDRESS)
+            elif tableName == constants.TABLENAME_DISTRICT and columns[l] == "d_address":
+                v1 = self.genNestedTuple(v, constants.TABLENAME_DISTRICT_ADDRESS)
+            elif tableName == constants.TABLENAME_SUPPLIER and columns[l] == "su_address":
+                v1 = self.genNestedTuple(v, constants.TABLENAME_SUPPLIER_ADDRESS)
+            elif tableName == constants.TABLENAME_CUSTOMER:
+                if columns[l] == "c_name":
+                    v1 = self.genNestedTuple(v, constants.TABLENAME_CUSTOMER_NAME)
+                elif columns[l] == "c_extra":
+                    for i in range(0, self.customerExtraFields):
+                        val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                    continue
+                elif columns[l] == "c_addresses":
+                    v1 = []
+                    for clv in v:
+                        v1.append(self.genNestedTuple(clv, constants.TABLENAME_CUSTOMER_ADDRESSES))
+                        if self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"]:
+                            break # Load only one customer address for CH2P
+                elif columns[l] == "c_phones":
+                    v1 = []
+                    for clv in v:
+                        v1.append(self.genNestedTuple(clv, constants.TABLENAME_CUSTOMER_PHONES))
+                        if self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"]:
+                            break # Load only one customer phone for CH2P
+            elif tableName == constants.TABLENAME_ORDERS and columns[l] == "o_extra":
+                for i in range(0, self.ordersExtraFields):
+                    val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                continue
+            elif tableName == constants.TABLENAME_ITEM and columns[l] == "i_extra":
+                for i in range(0, self.itemExtraFields):
+                    val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                continue
+            val[columns[l]] = v1
+        return key, val
+
+    def genNestedTuple(self, tuple, tableName):
+        if self.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
+            columns = constants.CH2_TABLE_COLUMNS[tableName]
+        else:
+            columns = constants.CH2PP_TABLE_COLUMNS[tableName]
+        rval = {}
+        for l, v in enumerate(tuple):
+            if isinstance(v,(datetime)):
+                v = str(v)
+            rval[columns[l]] = v
+        return rval
+
     def loadStart(self):
         """Optional callback to indicate to the driver that the data loading phase is about to begin."""
         return None
@@ -168,3 +281,4 @@ class AbstractDriver(object):
         """
         raise NotImplementedError("%s does not implement doStockLevel" % (self.driver_name))
 ## CLASS
+
