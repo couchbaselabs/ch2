@@ -154,10 +154,9 @@ MAX_PAYMENT = 5000.0
 #  Indicates "brand" items and stock in i_data and s_data.
 ORIGINAL_STRING = "ORIGINAL"
 
-CH2_NAMESPACE = "default"
 CH2_BUCKET = "bench"
+CH2_SCOPE = "ch2"
 
-NUM_LOAD_RETRIES = 10
 CH2_DRIVER_LOAD_MODE = {
     "NOT_SET":-1,
     "DATASVC_BULKLOAD":0,
@@ -165,9 +164,9 @@ CH2_DRIVER_LOAD_MODE = {
     "QRYSVC_LOAD":2
 }
 CH2_DRIVER_SCHEMA = {
-    "CH2":"ch2",
-    "CH2P":"ch2p",
-    "CH2PP":"ch2pp"
+    "CH2":0,
+    "CH2P":1,
+    "CH2PP":2
 }
 CH2_DRIVER_ANALYTICAL_QUERIES = {
     "HAND_OPTIMIZED_QUERIES":0,
@@ -200,24 +199,24 @@ CH2_DRIVER_KV_TIMEOUT = 10
 CH2_DRIVER_BULKLOAD_BATCH_SIZE = 1024 * 256 # 256K
 
 # Table Names
-TABLENAME_ITEM       = "item"
-TABLENAME_WAREHOUSE  = "warehouse"
-TABLENAME_DISTRICT   = "district"
-TABLENAME_CUSTOMER   = "customer"
-TABLENAME_STOCK      = "stock"
-TABLENAME_ORDERS     = "orders"
-TABLENAME_NEWORDER   = "neworder"
-TABLENAME_ORDERLINE  = "orderline"
-TABLENAME_HISTORY    = "history"
-TABLENAME_SUPPLIER   = "supplier"
-TABLENAME_NATION     = "nation"
-TABLENAME_REGION     = "region"
-TABLENAME_WAREHOUSE_ADDRESS  = "warehouse_address"
-TABLENAME_DISTRICT_ADDRESS  = "district_address"
-TABLENAME_CUSTOMER_NAME  = "customer_name"
-TABLENAME_CUSTOMER_ADDRESSES  = "customer_addresses"
-TABLENAME_CUSTOMER_PHONES  = "customer_phones"
-TABLENAME_SUPPLIER_ADDRESS  = "supplier_address"
+TABLENAME_ITEM       = "default:bench.ch2.item"
+TABLENAME_WAREHOUSE  = "default:bench.ch2.warehouse"
+TABLENAME_DISTRICT   = "default:bench.ch2.district"
+TABLENAME_CUSTOMER   = "default:bench.ch2.customer"
+TABLENAME_STOCK      = "default:bench.ch2.stock"
+TABLENAME_ORDERS     = "default:bench.ch2.orders"
+TABLENAME_NEWORDER   = "default:bench.ch2.neworder"
+TABLENAME_ORDERLINE  = "default:bench.ch2.orderline"
+TABLENAME_HISTORY    = "default:bench.ch2.history"
+TABLENAME_SUPPLIER   = "default:bench.ch2.supplier"
+TABLENAME_NATION     = "default:bench.ch2.nation"
+TABLENAME_REGION     = "default:bench.ch2.region"
+TABLENAME_WAREHOUSE_ADDRESS  = "default:bench.ch2.warehouse_address"
+TABLENAME_DISTRICT_ADDRESS  = "default:bench.ch2.district_address"
+TABLENAME_CUSTOMER_NAME  = "default:bench.ch2.customer_name"
+TABLENAME_CUSTOMER_ADDRESSES  = "default:bench.ch2.customer_addresses"
+TABLENAME_CUSTOMER_PHONES  = "default:bench.ch2.customer_phones"
+TABLENAME_SUPPLIER_ADDRESS  = "default:bench.ch2.supplier_address"
 
 COLLECTIONS_DICT = {
     TABLENAME_ITEM:"item",
@@ -246,6 +245,55 @@ ALL_TABLES = [
     TABLENAME_SUPPLIER,
     TABLENAME_NATION,
     TABLENAME_REGION
+]
+
+# Mongo Table Names
+MONGO_TABLENAME_ITEM = "item"
+MONGO_TABLENAME_WAREHOUSE  = "warehouse"
+MONGO_TABLENAME_DISTRICT   = "district"
+MONGO_TABLENAME_CUSTOMER   = "customer"
+MONGO_TABLENAME_STOCK      = "stock"
+MONGO_TABLENAME_ORDERS     = "orders"
+MONGO_TABLENAME_NEWORDER   = "neworder"
+MONGO_TABLENAME_ORDERLINE  = "orderline"
+MONGO_TABLENAME_HISTORY    = "history"
+MONGO_TABLENAME_SUPPLIER   = "supplier"
+MONGO_TABLENAME_NATION     = "nation"
+MONGO_TABLENAME_REGION     = "region"
+MONGO_TABLENAME_WAREHOUSE_ADDRESS  = "warehouse_address"
+MONGO_TABLENAME_DISTRICT_ADDRESS  = "district_address"
+MONGO_TABLENAME_CUSTOMER_NAME  = "customer_name"
+MONGO_TABLENAME_CUSTOMER_ADDRESSES  = "customer_addresses"
+MONGO_TABLENAME_CUSTOMER_PHONES  = "customer_phones"
+MONGO_TABLENAME_SUPPLIER_ADDRESS  = "supplier_address"
+
+MONGO_COLLECTIONS_DICT = {
+    MONGO_TABLENAME_ITEM:"item",
+    MONGO_TABLENAME_WAREHOUSE:"warehouse",
+    MONGO_TABLENAME_DISTRICT:"district",
+    MONGO_TABLENAME_CUSTOMER:"customer",
+    MONGO_TABLENAME_STOCK:"stock",
+    MONGO_TABLENAME_ORDERS:"orders",
+    MONGO_TABLENAME_NEWORDER:"neworder",
+    MONGO_TABLENAME_ORDERLINE:"orderline",
+    MONGO_TABLENAME_HISTORY:"history",
+    MONGO_TABLENAME_SUPPLIER:"supplier",
+    MONGO_TABLENAME_NATION:"nation",
+    MONGO_TABLENAME_REGION:"region"}
+
+MONGO_ALL_TABLES = [
+    MONGO_TABLENAME_ITEM,
+    MONGO_TABLENAME_WAREHOUSE,
+    MONGO_TABLENAME_DISTRICT,
+    MONGO_TABLENAME_CUSTOMER,
+    MONGO_TABLENAME_STOCK,
+    MONGO_TABLENAME_ORDERS,
+    MONGO_TABLENAME_NEWORDER,
+    MONGO_TABLENAME_ORDERLINE,
+    MONGO_TABLENAME_HISTORY,
+    MONGO_TABLENAME_SUPPLIER,
+    MONGO_TABLENAME_NATION,
+    MONGO_TABLENAME_REGION
 ]
 
 NATIONS = [
@@ -317,361 +365,6 @@ NATIONS = [
 
 REGIONS = ["Africa", "America", "Asia", "Europe", "Middle East"]
 
-KEYNAMES = {
-        TABLENAME_ITEM:         [0],  # INTEGER
-        TABLENAME_WAREHOUSE:    [0],  # INTEGER
-        TABLENAME_DISTRICT:     [1, 0],  # INTEGER
-        TABLENAME_CUSTOMER:     [2, 1, 0], # INTEGER
-        TABLENAME_STOCK:        [1, 0],  # INTEGER
-        TABLENAME_ORDERS:       [3, 2, 0], # INTEGER
-        TABLENAME_NEWORDER:     [2, 1, 0], # INTEGER
-        TABLENAME_ORDERLINE:    [2, 1, 0, 3], # INTEGER
-        TABLENAME_HISTORY:      [2, 1, 0],  # INTEGER
-        TABLENAME_SUPPLIER:     [0],  # INTEGER
-        TABLENAME_NATION:       [0],  # INTEGER
-        TABLENAME_REGION:       [0],  # INTEGER
-}
-
-CH2_TABLE_COLUMNS = {
-    TABLENAME_ITEM: [
-        "i_id", # INTEGER
-        "i_name", # VARCHAR
-        "i_price", # FLOAT
-        "i_extra", # Extra unused fields
-        "i_categories", # ARRAY
-        "i_data", # VARCHAR
-        "i_im_id", # INTEGER
-    ],
-    TABLENAME_WAREHOUSE: [
-        "w_id", # SMALLINT
-        "w_ytd", # FLOAT
-        "w_tax", # FLOAT
-        "w_name", # VARCHAR
-        "w_street_1", # VARCHAR
-        "w_street_2", # VARCHAR
-        "w_city", # VARCHAR
-        "w_state", # VARCHAR
-        "w_zip", # VARCHAR
-    ],
-    TABLENAME_DISTRICT: [
-        "d_id", # TINYINT
-        "d_w_id", # SMALLINT
-        "d_ytd", # FLOAT
-        "d_tax", # FLOAT
-        "d_next_o_id", # INT
-        "d_name", # VARCHAR
-        "d_street_1", # VARCHAR
-        "d_street_2", # VARCHAR
-        "d_city", # VARCHAR
-        "d_state", # VARCHAR
-        "d_zip", # VARCHAR
-    ],
-    TABLENAME_CUSTOMER:   [
-        "c_id", # INTEGER
-        "c_d_id", # TINYINT
-        "c_w_id", # SMALLINT
-        "c_discount", # FLOAT
-        "c_credit", # VARCHAR
-        "c_first", # VARCHAR
-        "c_middle", # VARCHAR
-        "c_last", # VARCHAR
-        "c_credit_lim", # FLOAT
-        "c_balance", # FLOAT
-        "c_ytd_payment", # FLOAT
-        "c_payment_cnt", # INTEGER
-        "c_delivery_cnt", # INTEGER
-        "c_extra", # Extra unused fields
-        "c_street_1", # VARCHAR
-        "c_street_2", # VARCHAR
-        "c_city", # VARCHAR
-        "c_state", # VARCHAR
-        "c_zip", # VARCHAR
-        "c_phone", # VARCHAR
-        "c_since", # TIMESTAMP
-        "c_item_categories", # ARRAY
-        "c_data", # VARCHAR
-    ],
-    TABLENAME_STOCK:      [
-        "s_i_id", # INTEGER
-        "s_w_id", # SMALLINT
-        "s_quantity", # INTEGER
-        "s_ytd", # INTEGER
-        "s_order_cnt", # INTEGER
-        "s_remote_cnt", # INTEGER
-        "s_data", # VARCHAR
-        "s_dist_01", # VARCHAR
-        "s_dist_02", # VARCHAR
-        "s_dist_03", # VARCHAR
-        "s_dist_04", # VARCHAR
-        "s_dist_05", # VARCHAR
-        "s_dist_06", # VARCHAR
-        "s_dist_07", # VARCHAR
-        "s_dist_08", # VARCHAR
-        "s_dist_09", # VARCHAR
-        "s_dist_10", # VARCHAR
-    ],
-    TABLENAME_ORDERS:     [
-        "o_id", # INTEGER
-        "o_c_id", # INTEGER
-        "o_d_id", # TINYINT
-        "o_w_id", # SMALLINT
-        "o_carrier_id", # INTEGER
-        "o_ol_cnt", # INTEGER
-        "o_all_local", # INTEGER
-        "o_entry_d", # TIMESTAMP
-        "o_extra", # Extra unused fields
-        "o_orderline", # ARRAY
-    ],
-    TABLENAME_NEWORDER:  [
-        "no_o_id", # INTEGER
-        "no_d_id", # TINYINT
-        "no_w_id", # SMALLINT
-    ],
-    TABLENAME_ORDERLINE: [
-#        "ol_o_id", # INTEGER
-#        "ol_d_id", # TINYINT
-#        "ol_w_id", # SMALLINT
-        "ol_number", # INTEGER
-        "ol_i_id", # INTEGER
-        "ol_supply_w_id", # SMALLINT
-        "ol_delivery_d", # TIMESTAMP
-        "ol_quantity", # INTEGER
-        "ol_amount", # FLOAT
-        "ol_dist_info", # VARCHAR
-    ],
-    TABLENAME_HISTORY:    [
-        "h_c_id", # INTEGER
-        "h_c_d_id", # TINYINT
-        "h_c_w_id", # SMALLINT
-        "h_d_id", # TINYINT
-        "h_w_id", # SMALLINT
-        "h_date", # TIMESTAMP
-        "h_amount", # FLOAT
-        "h_data", # VARCHAR
-    ],
-    TABLENAME_SUPPLIER:    [
-        "su_suppkey", # INTEGER
-        "su_name", # VARCHAR
-        "su_address", # VARCHAR
-        "su_nationkey", # INTEGER
-        "su_phone", # VARCHAR
-        "su_acctbal", # FLOAT
-        "su_comment", # VARCHAR
-    ],
-    TABLENAME_NATION:    [
-        "n_nationkey", # INTEGER
-        "n_name", # VARCHAR
-        "n_regionkey", # INTEGER
-        "n_comment", # VARCHAR
-    ],
-    TABLENAME_REGION:    [
-        "r_regionkey", # INTEGER
-        "r_name", # VARCHAR
-        "r_comment", # VARCHAR
-    ],
-}
-
-CH2PP_TABLE_COLUMNS = {
-    TABLENAME_ITEM: [
-        "i_id", # INTEGER
-        "i_name", # VARCHAR
-        "i_price", # FLOAT
-        "i_extra", # Extra unused fields
-        "i_categories", # ARRAY
-        "i_data", # VARCHAR
-        "i_im_id", # INTEGER
-    ],
-    TABLENAME_WAREHOUSE: [
-        "w_id", # SMALLINT
-        "w_ytd", # FLOAT
-        "w_tax", # FLOAT
-        "w_name", # VARCHAR
-        "w_address", # JSON
-    ],
-    TABLENAME_DISTRICT: [
-        "d_id", # TINYINT
-        "d_w_id", # SMALLINT
-        "d_ytd", # FLOAT
-        "d_tax", # FLOAT
-        "d_next_o_id", # INT
-        "d_name", # VARCHAR
-        "d_address", # JSON
-    ],
-    TABLENAME_CUSTOMER:   [
-        "c_id", # INTEGER
-        "c_d_id", # TINYINT
-        "c_w_id", # SMALLINT
-        "c_discount", # FLOAT
-        "c_credit", # VARCHAR
-        "c_name", # JSON OBJECT
-        "c_credit_lim", # FLOAT
-        "c_balance", # FLOAT
-        "c_ytd_payment", # FLOAT
-        "c_payment_cnt", # INTEGER
-        "c_delivery_cnt", # INTEGER
-        "c_extra", # Extra unused fields
-        "c_addresses", # ARRAY
-        "c_phones", # ARRAY
-        "c_since", # TIMESTAMP
-        "c_item_categories", # ARRAY
-        "c_data", # VARCHAR
-    ],
-    TABLENAME_STOCK:      [
-        "s_i_id", # INTEGER
-        "s_w_id", # SMALLINT
-        "s_quantity", # INTEGER
-        "s_ytd", # INTEGER
-        "s_order_cnt", # INTEGER
-        "s_remote_cnt", # INTEGER
-        "s_data", # VARCHAR
-        "s_dists", # ARRAY
-    ],
-    TABLENAME_ORDERS:     [
-        "o_id", # INTEGER
-        "o_c_id", # INTEGER
-        "o_d_id", # TINYINT
-        "o_w_id", # SMALLINT
-        "o_carrier_id", # INTEGER
-        "o_ol_cnt", # INTEGER
-        "o_all_local", # INTEGER
-        "o_entry_d", # TIMESTAMP
-        "o_extra", # Extra unused fields
-        "o_orderline", # ARRAY
-    ],
-    TABLENAME_NEWORDER:  [
-        "no_o_id", # INTEGER
-        "no_d_id", # TINYINT
-        "no_w_id", # SMALLINT
-    ],
-    TABLENAME_ORDERLINE: [
-#        "ol_o_id", # INTEGER
-#        "ol_d_id", # TINYINT
-#        "ol_w_id", # SMALLINT
-        "ol_number", # INTEGER
-        "ol_i_id", # INTEGER
-        "ol_supply_w_id", # SMALLINT
-        "ol_delivery_d", # TIMESTAMP
-        "ol_quantity", # INTEGER
-        "ol_amount", # FLOAT
-        "ol_dist_info", # VARCHAR
-    ],
-    TABLENAME_HISTORY:    [
-        "h_c_id", # INTEGER
-        "h_c_d_id", # TINYINT
-        "h_c_w_id", # SMALLINT
-        "h_d_id", # TINYINT
-        "h_w_id", # SMALLINT
-        "h_date", # TIMESTAMP
-        "h_amount", # FLOAT
-        "h_data", # VARCHAR
-    ],
-    TABLENAME_SUPPLIER:    [
-        "su_suppkey", # INTEGER
-        "su_name", # VARCHAR
-        "su_address", # JSON
-        "su_nationkey", # INTEGER
-        "su_phone", # VARCHAR
-        "su_acctbal", # FLOAT
-        "su_comment", # VARCHAR
-    ],
-    TABLENAME_NATION:    [
-        "n_nationkey", # INTEGER
-        "n_name", # VARCHAR
-        "n_regionkey", # INTEGER
-        "n_comment", # VARCHAR
-    ],
-    TABLENAME_REGION:    [
-        "r_regionkey", # INTEGER
-        "r_name", # VARCHAR
-        "r_comment", # VARCHAR
-    ],
-    TABLENAME_WAREHOUSE_ADDRESS:    [
-        "w_street_1", # VARCHAR
-        "w_street_2", # VARCHAR
-        "w_city", # VARCHAR
-        "w_state", # VARCHAR
-        "w_zip", # VARCHAR
-    ],
-    TABLENAME_DISTRICT_ADDRESS:    [
-        "d_street_1", # VARCHAR
-        "d_street_2", # VARCHAR
-        "d_city", # VARCHAR
-        "d_state", # VARCHAR
-        "d_zip", # VARCHAR
-    ],
-    TABLENAME_CUSTOMER_NAME:    [
-        "c_first", # VARCHAR
-        "c_middle", # VARCHAR
-        "c_last", # VARCHAR
-    ],
-    TABLENAME_CUSTOMER_ADDRESSES:    [
-        "c_address_kind", # VARCHAR
-        "c_street_1", # VARCHAR
-        "c_street_2", # VARCHAR
-        "c_city", # VARCHAR
-        "c_state", # VARCHAR
-        "c_zip", # VARCHAR
-    ],
-    TABLENAME_CUSTOMER_PHONES:    [
-        "c_phone_kind", # VARCHAR
-        "c_phone_number", # VARCHAR
-    ],
-    TABLENAME_SUPPLIER_ADDRESS:    [
-        "su_street_1", # VARCHAR
-        "su_street_2", # VARCHAR
-        "su_city", # VARCHAR
-        "su_state", # VARCHAR
-        "su_zip", # VARCHAR
-    ],
-}
-
-TABLE_INDEXES = {
-    TABLENAME_ITEM: [
-        "i_id",
-    ],
-    TABLENAME_WAREHOUSE: [
-        "w_id",
-    ],
-    TABLENAME_DISTRICT: [
-        "d_id",
-        "d_w_id",
-    ],
-    TABLENAME_CUSTOMER:   [
-        "c_id",
-        "c_d_id",
-        "c_w_id",
-    ],
-    TABLENAME_STOCK:      [
-        "s_i_id",
-        "s_w_id",
-    ],
-    TABLENAME_ORDERS:     [
-        "o_id",
-        "o_d_id",
-        "o_w_id",
-        "o_c_id",
-    ],
-    TABLENAME_NEWORDER:  [
-        "no_o_id",
-        "no_d_id",
-        "no_w_id",
-    ],
-    TABLENAME_ORDERLINE: [
-        "ol_o_id",
-        "ol_d_id",
-        "ol_w_id",
-    ],
-    TABLENAME_SUPPLIER:    [
-        "su_suppkey",
-    ],
-    TABLENAME_NATION:    [
-        "n_nationkey",
-    ],
-    TABLENAME_REGION:    [
-        "r_regionkey",
-    ],
-}
-
 # Transaction Types
 def enum(*sequential, **named):
     enums = dict(map(lambda x: (x, x), sequential))
@@ -723,7 +416,7 @@ CH2_QUERIES = {
     "Q03": "WITH co as "\
            "(SELECT o.o_id, o.o_w_id, o.o_d_id, o.o_entry_d, o.o_orderline "\
             "FROM orders o, customer c "\
-            "WHERE  c.c_state LIKE 'a%' "\
+            "WHERE  c.c_state LIKE 'A%' "\
               "AND c.c_id = o.o_c_id AND c.c_w_id = o.o_w_id AND c.c_d_id = o.o_d_id "\
               "AND o.o_entry_d /*+ skip-index */ < '2017-03-15 00:00:00.000000') "\
            "SELECT co.o_id, co.o_w_id, co.o_d_id, SUM(ol.ol_amount) as revenue, co.o_entry_d "\
@@ -1035,7 +728,7 @@ CH2PP_QUERIES = {
            "(SELECT o.o_id, o.o_w_id, o.o_d_id, o.o_entry_d, o.o_orderline "\
             "FROM orders o, customer c, c.c_addresses ca "\
             "WHERE ca.c_address_kind = 'shipping' "\
-            "AND ca.c_state LIKE 'a%' "\
+            "AND ca.c_state LIKE 'A%' "\
             "AND c.c_id = o.o_c_id AND c.c_w_id = o.o_w_id AND c.c_d_id = o.o_d_id "\
               "AND o.o_entry_d /*+ skip-index */ < '2017-03-15 00:00:00.000000') "\
            "SELECT co.o_id, co.o_w_id, co.o_d_id, SUM(ol.ol_amount) as revenue, co.o_entry_d "\
@@ -1362,7 +1055,7 @@ CH2_QUERIES_NON_OPTIMIZED = {
     # This list will be sorted by the descending amount.
     "Q03": "SELECT o.o_id, o.o_w_id, o.o_d_id, SUM(ol.ol_amount) AS revenue, o.o_entry_d "
            "FROM   customer c, neworder no, orders o, o.o_orderline ol "
-           "WHERE  c.c_state LIKE 'a%' "
+           "WHERE  c.c_state LIKE 'A%' "
              "AND c.c_id = o.o_c_id "
              "AND c.c_w_id = o.o_w_id "
              "AND c.c_d_id = o.o_d_id "
@@ -1396,7 +1089,7 @@ CH2_QUERIES_NON_OPTIMIZED = {
              "AND  o.o_w_id = s.s_w_id "
              "AND  ol.ol_i_id = s.s_i_id "
              "AND  s.s_w_id * s.s_i_id MOD 10000 = su.su_suppkey "
-             "AND  string_to_codepoint(c.c_state)[0] = su.su_nationkey "
+             "AND  string_to_codepoint(c.c_state)[0] = su.n_nationkey "
              "AND  string_to_codepoint(c.c_state)[0] = n.n_nationkey "
              "AND  su.su_nationkey = n.n_nationkey "
              "AND  n.n_regionkey = r.r_regionkey "
@@ -1546,7 +1239,7 @@ CH2_QUERIES_NON_OPTIMIZED = {
     # Q15: This query finds the top supplier or suppliers who contributed the
     # most to the overall revenue for items shipped during a given period of time.
     "Q15": "WITH revenue AS ( "
-                "SELECT s.s_w_id * s.s_i_id MOD 10000 as supplier_no, SUM(ol.ol_amount) AS total_revenue "
+                "SELECT s.s_w_id * s.s_i_id MOD 10000 as supplier_no, SUM(ol.ol_amount) AS total_rev "
                 "FROM   orders o, o.o_orderline ol, stock s "
                 "WHERE ol.ol_i_id = s.s_i_id "
                   "AND ol.ol_supply_w_id = s.s_w_id "
@@ -1727,7 +1420,7 @@ CH2PP_QUERIES_NON_OPTIMIZED = {
     "Q03": "SELECT o.o_id, o.o_w_id, o.o_d_id, SUM(ol.ol_amount) AS revenue, o.o_entry_d "
            "FROM   customer c, c.c_addresses ca, neworder no, orders o, o.o_orderline ol "
            "WHERE ca.c_address_kind = 'shipping' "
-             "AND ca.c_state LIKE 'a%' "
+             "AND ca.c_state LIKE 'A%' "
              "AND c.c_id = o.o_c_id "
              "AND c.c_w_id = o.o_w_id "
              "AND c.c_d_id = o.o_d_id "
@@ -1762,7 +1455,7 @@ CH2PP_QUERIES_NON_OPTIMIZED = {
              "AND  ol.ol_i_id = s.s_i_id "
              "AND  s.s_w_id * s.s_i_id MOD 10000 = su.su_suppkey "
              "AND  ca.c_address_kind = 'shipping' "
-             "AND  string_to_codepoint(ca.c_state)[0] = su.su_nationkey "
+             "AND  string_to_codepoint(ca.c_state)[0] = su.n_nationkey "
              "AND  string_to_codepoint(ca.c_state)[0] = n.n_nationkey "
              "AND  su.su_nationkey = n.n_nationkey "
              "AND  n.n_regionkey = r.r_regionkey "
@@ -1916,7 +1609,7 @@ CH2PP_QUERIES_NON_OPTIMIZED = {
     # Q15: This query finds the top supplier or suppliers who contributed the
     # most to the overall revenue for items shipped during a given period of time.
     "Q15": "WITH revenue AS ( "
-                "SELECT s.s_w_id * s.s_i_id MOD 10000 as supplier_no, SUM(ol.ol_amount) AS total_revenue "
+                "SELECT s.s_w_id * s.s_i_id MOD 10000 as supplier_no, SUM(ol.ol_amount) AS total_rev "
                 "FROM   orders o, o.o_orderline ol, stock s "
                 "WHERE ol.ol_i_id = s.s_i_id "
                   "AND ol.ol_supply_w_id = s.s_w_id "
@@ -2057,842 +1750,6 @@ CH2PP_QUERIES_NON_OPTIMIZED = {
            "ORDER BY SUBSTR1(ca.c_state,1,1);"
 }
 
-
-CH2_MONGO_QUERIES ={
-    # Q01: This query reports the total amount and quantity of all shipped orderlines
-    # given by a specific time period. Additionally it informs about the average
-    # amount and quantity plus the total count of all these orderlines ordered
-    # by the individual orderline number.
-    "Q01": "SELECT ol_number, "
-                  "SUM(o.o_orderline.ol_quantity) AS sum_qty, "
-                  "SUM(o.o_orderline.ol_amount) AS sum_amount, "
-                  "AVG(o.o_orderline.ol_quantity) AS avg_qty, "
-                  "AVG(o.o_orderline.ol_amount) AS avg_amount, "
-                  "COUNT(*) AS count_order "
-           "FROM UNWIND (orders AS o WITH PATH => o_orderline) "
-           "WHERE o.o_orderline.ol_delivery_d  > '2014-07-01 00:00:00' "
-           "GROUP BY o_orderline.ol_number AS ol_number "
-           "ORDER BY ol_number ",
-
-    # Q02: Query for listing suppliers and their distributed items having the lowest
-    # stock level for a certain item and certain region.
-    "Q02": "SELECT su.su_suppkey, su.su_name, n.n_name, i.i_id, i.i_name, "
-                   "su.su_address, su.su_phone, su.su_comment "
-           "FROM   item i,  supplier su, stock s, nation n, region r, "
-                  "(SELECT s1.s_i_id as m_i_id, MIN(s1.s_quantity) AS m_s_quantity "
-                   "FROM stock s1, supplier su1, nation n1, region r1 "
-                   "WHERE MOD(s1.s_w_id * s1.s_i_id, 10000) = su1.su_suppkey "
-                     "AND su1.su_nationkey=n1.n_nationkey "
-                     "AND n1.n_regionkey=r1.r_regionkey "
-                     "AND r1.r_name LIKE 'Europ%' "
-                   "GROUP BY s1.s_i_id) m "
-           "WHERE i.i_id = s.s_i_id "
-             "AND MOD(s.s_w_id * s.s_i_id, 10000) = su.su_suppkey "
-             "AND su.su_nationkey = n.n_nationkey "
-             "AND n.n_regionkey = r.r_regionkey "
-             "AND i.i_data LIKE '%b' "
-             "AND r.r_name LIKE 'Europ%' "
-             "AND i.i_id=m.m_i_id "
-             "AND s.s_quantity = m.m_s_quantity "
-           "ORDER BY n.n_name, su.su_name, i.i_id "
-           "LIMIT 100 ",
-
-
-    # Q03: Unshipped orders with the highest price amount for a customer will be
-    # listed within a given state and with orders newer than a specific timestamp.
-    # This list will be sorted by the descending amount.
-    "Q03": "SELECT o.o_id, o.o_w_id, o.o_d_id, "
-                  "SUM(o.o_orderline.ol_amount) AS revenue, o.o_entry_d "
-           "FROM customer c, neworder no, "
-                "UNWIND (orders AS o WITH PATH => o_orderline) "
-           "WHERE c.c_state LIKE 'a%' "
-             "AND c.c_id = o.o_c_id "
-             "AND c.c_w_id = o.o_w_id "
-             "AND c.c_d_id = o.o_d_id "
-             "AND no.no_w_id = o.o_w_id "
-             "AND no.no_d_id = o.o_d_id "
-             "AND no.no_o_id = o.o_id "
-             "AND o.o_entry_d < '2017-03-15 00:00:00.000000' "
-           "GROUP BY o.o_id, o.o_w_id, o.o_d_id, o.o_entry_d "
-           "ORDER BY revenue DESC, o.o_entry_d ",
-
-    # Q04: This query is listing all orders with orderlines or just parts of them
-    # shipped after the entry date of their booking.
-    "Q04": "SELECT ol_cnt, COUNT(*) as order_count "
-           "FROM   orders o "
-           "WHERE  o.o_entry_d >= '2015-07-01 00:00:00.000000' "
-             "AND o.o_entry_d < '2015-10-01 00:00:00.000000' "
-             "AND EXISTS (SELECT 1 "
-                         "FROM UNWIND (orders AS o WITH PATH => o_orderline) "
-                         "WHERE o.o_orderline.ol_delivery_d >= "
-                                "CAST(DATEADD(week, 1, CAST(o.o_entry_d AS TIMESTAMP)) AS STRING)) "
-           "GROUP BY o.o_ol_cnt AS ol_cnt "
-           "ORDER BY ol_cnt ",
-
-    # Q05: Query result for getting information about achieved revenues of nations
-    # within a given region. All nations are sorted by the total amount of revenue
-    # gained since the given date.
-    "Q05": "SELECT  nname, ROUND(SUM(o.o_orderline.ol_amount), 2) AS revenue "
-           "FROM    customer c, "
-                   "UNWIND (orders AS o WITH PATH => o_orderline), "
-                   "stock s, supplier su, nation n, region r "
-           "WHERE    c.c_id = o.o_c_id "
-             "AND    c.c_w_id = o.o_w_id "
-             "AND    c.c_d_id = o.o_d_id "
-             "AND    o.o_w_id = s.s_w_id "
-             "AND    o.o_orderline.ol_i_id = s.s_i_id "
-             "AND    MOD(s.s_w_id * s.s_i_id, 10000) = su.su_suppkey "
-             "AND    POSITION(SUBSTRING(c.c_state,0,1) IN '##########%%%%%%%%%%##########%%%%%%%%%%########0123456789#######ABCDEFGHIJKLMNOPQRSTUVWXYZ%%%%%%abcdefghijklmnopqrstuvwxyz') = su.su_nationkey "
-             "AND    POSITION(SUBSTRING(c.c_state,0,1) IN '##########%%%%%%%%%%##########%%%%%%%%%%########0123456789#######ABCDEFGHIJKLMNOPQRSTUVWXYZ%%%%%%abcdefghijklmnopqrstuvwxyz') = n.n_nationkey "
-             "AND    su.su_nationkey = n.n_nationkey "
-             "AND    n.n_regionkey = r.r_regionkey "
-             "AND    r.r_name = 'Asia' "
-             "AND    o.o_entry_d >= '2016-01-01 00:00:00.000000' "
-             "AND    o.o_entry_d < '2017-01-01 00:00:00.000000' "
-           "GROUP BY n.n_name AS nname "
-           "ORDER BY revenue DESC ",
-
-    # Q06: Query lists the total amount of archived revenue from orderlines which
-    # were delivered in a specific period and a certain quantity.
-    "Q06": "SELECT SUM(o.o_orderline.ol_amount) as revenue "
-           "FROM UNWIND (orders AS o WITH PATH => o_orderline) "
-           "WHERE  o.o_orderline.ol_delivery_d >= '2016-01-01 00:00:00.000000' "
-             "AND  o.o_orderline.ol_delivery_d < '2017-01-01 00:00:00.000000' "
-             "AND  o.o_orderline.ol_amount > 600 ",
-
-    # Q07: Query for showing the bi-directional trade volume between two given
-    # nations sorted by their names and the considered years.
-    "Q07": "SELECT supp_nation, cust_nation, l_year, "
-	           "ROUND(SUM(o.o_orderline.ol_amount),2) AS revenue "
-           "FROM   supplier su, stock s, "
-                   "UNWIND (orders AS o WITH PATH => o_orderline), "
-                   "customer c, nation n1, nation n2 "
-           "WHERE    o.o_orderline.ol_supply_w_id = s.s_w_id "
-             "AND    o.o_orderline.ol_i_id = s.s_i_id "
-             "AND    MOD(s.s_w_id * s.s_i_id, 10000) = su.su_suppkey "
-              "AND    c.c_id = o.o_c_id "
-             "AND    c.c_w_id = o.o_w_id "
-             "AND    c.c_d_id = o.o_d_id "
-             "AND    su.su_nationkey = n1.n_nationkey "
-             "AND    POSITION(SUBSTRING(c.c_state,0,1) IN '##########%%%%%%%%%%##########%%%%%%%%%%########0123456789#######ABCDEFGHIJKLMNOPQRSTUVWXYZ%%%%%%abcdefghijklmnopqrstuvwxyz') = n2.n_nationkey "
-             "AND    ((n1.n_name = 'Germany' and n2.n_name = 'Cambodia') OR "
-                     "(n1.n_name = 'Cambodia' and n2.n_name = 'Germany')) "
-             "AND    o.o_orderline.ol_delivery_d BETWEEN '2017-01-01 00:00:00.000000' "
-                                         "AND '2018-12-31 00:00:00.000000' "
-           "GROUP BY su.su_nationkey AS supp_nation, "
-                     "SUBSTRING(c.c_state,0,1) AS cust_nation, "
-                     "EXTRACT(YEAR FROM CAST(o.o_entry_d AS TIMESTAMP)) AS l_year "
-           "ORDER BY supp_nation, cust_nation, l_year ",
-
-    # Q08: This query lists the market share of a given nation for customers from
-    # a certain region in which kinds of items are "produced".
-    "Q08": "SELECT l_year, "
-                  "ROUND((SUM(CASE WHEN n2.n_name = 'Germany' "
-                  "THEN o.o_orderline.ol_amount "
-                  "ELSE 0 END) / SUM(o.o_orderline.ol_amount)),2) AS mkt_share "
-           "FROM  item i, supplier su, stock s, "
-                 "UNWIND (orders AS o WITH PATH => o_orderline), "
-                 "customer c, nation n1, nation n2, region r "
-           "WHERE i.i_id = s.s_i_id "
-             "AND o.o_orderline.ol_i_id = s.s_i_id "
-             "AND o.o_orderline.ol_supply_w_id = s.s_w_id "
-             "AND MOD(s.s_w_id * s.s_i_id, 10000) = su.su_suppkey "
-             "AND c.c_id = o.o_c_id "
-             "AND c.c_w_id = o.o_w_id "
-             "AND c.c_d_id = o.o_d_id "
-             "AND n1.n_nationkey = POSITION(SUBSTRING(c.c_state,0,1) IN '##########%%%%%%%%%%##########%%%%%%%%%%########0123456789#######ABCDEFGHIJKLMNOPQRSTUVWXYZ%%%%%%abcdefghijklmnopqrstuvwxyz') "
-             "AND n1.n_regionkey = r.r_regionkey "
-             "AND o.o_orderline.ol_i_id < 1000 "
-             "AND r.r_name = 'Europe' "
-             "AND su.su_nationkey = n2.n_nationkey "
-             "AND o.o_entry_d BETWEEN '2017-01-01 00:00:00.000000' AND '2018-12-31 00:00:00.000000' "
-             "AND i.i_data LIKE '%b' "
-             "AND i.i_id = o.o_orderline.ol_i_id "
-           "GROUP BY EXTRACT(YEAR FROM CAST(o.o_entry_d AS TIMESTAMP)) AS l_year "
-           "ORDER BY l_year ",
-
-    # Q09: This query describes how much profit has been made on a selection of
-    # items for each nation and each year. The result list will be sorted by the
-    # name of the nation and the financial year.
-    "Q09": "SELECT  n_name, l_year, "
-                   "SUM(o.o_orderline.ol_amount) AS sum_profit "
-           "FROM    item i, stock s, supplier su, "
-                   "UNWIND (orders AS o WITH PATH => o_orderline), nation n "
-           "WHERE   o.o_orderline.ol_i_id = s.s_i_id "
-             "AND    o.o_orderline.ol_supply_w_id = s.s_w_id "
-             "AND    MOD(s.s_w_id * s.s_i_id, 10000) = su.su_suppkey "
-             "AND    o.o_orderline.ol_i_id = i.i_id "
-             "AND    su.su_nationkey = n.n_nationkey "
-             "AND    i.i_data like '%bb' "
-           "GROUP BY n.n_name AS n_name, "
-                     "EXTRACT(YEAR FROM CAST(o.o_entry_d AS TIMESTAMP)) AS l_year "
-           "ORDER BY n_name, l_year DESC ",
-    # Q10: Query for analyzing the expenses of all customers listing their living
-    # country, some detail of them and the amount of money which they have used
-    # to take their orders since a specific date. The whole list is sorted by the
-    # amount of the customers’ orders.
-    "Q10": "SELECT cid, clast, SUM(o.o_orderline.ol_amount) AS revenue, "
-                   "ccity, cphone, nname "
-           "FROM customer c, "
-                "UNWIND (orders AS o WITH PATH => o_orderline), nation n "
-           "WHERE  c.c_id = o.o_c_id "
-             "AND  c.c_w_id = o.o_w_id "
-             "AND  c.c_d_id = o.o_d_id "
-             "AND  o.o_entry_d >= '2015-10-01 00:00:00.000000' "
-             "AND  o.o_entry_d < '2016-01-01 00:00:00.000000' "
-             "AND n.n_nationkey = POSITION(SUBSTRING(c.c_state,0,1) IN '##########%%%%%%%%%%##########%%%%%%%%%%########0123456789#######ABCDEFGHIJKLMNOPQRSTUVWXYZ%%%%%%abcdefghijklmnopqrstuvwxyz') "
-           "GROUP BY c.c_id AS cid, c.c_last AS clast, c.c_city AS ccity, "
-                    "c.c_phone AS cphone, n.n_name AS nname "
-           "ORDER BY revenue DESC "
-           "LIMIT 20 ",
-
-    # Q11: Most important items (items which are often involved in orders and
-    # therefore often bought by customers) supplied by supplier of a given nation.
-    "Q11": "SELECT s.s_i_id, SUM(s.s_order_cnt) as ordercount "
-           "FROM   stock s,  supplier su, nation n "
-           "WHERE  MOD(s.s_w_id * s.s_i_id, 10000) = su.su_suppkey "
-             "AND  su.su_nationkey = n.n_nationkey "
-             "AND  n.n_name = 'Germany' "
-           "GROUP BY s.s_i_id "
-           "HAVING SUM(s.s_order_cnt) > "
-                  "(SELECT SUM(s1.s_order_cnt) * 0.00005 "
-                   "FROM stock s1, supplier su1, nation n1 "
-                   "WHERE MOD(s1.s_w_id * s1.s_i_id, 10000) = su1.su_suppkey "
-                     "AND su1.su_nationkey = n1.n_nationkey "
-                     "AND n1.n_name = 'Germany') "
-           "ORDER BY ordercount DESC ",
-
-    # Q12: This query counts the amount of orders grouped by the number of
-    # orderlines in each order attending the number of orders which are shipped
-    # with a higher or lower order priority.
-    "Q12": "SELECT ol_cnt, "
-                   "SUM (CASE WHEN o.o_carrier_id = 1 OR o.o_carrier_id = 2 "
-                         "THEN 1 ELSE 0 END) AS high_line_COUNT, "
-                   "SUM (CASE WHEN o.o_carrier_id <> 1 AND o.o_carrier_id <> 2 "
-                         "THEN 1 ELSE 0 END) AS low_line_COUNT "
-           "FROM UNWIND (orders AS o WITH PATH => o_orderline) "
-           "WHERE  o.o_entry_d <= o.o_orderline.ol_delivery_d "
-             "AND  o.o_orderline.ol_delivery_d >= '2016-01-01 00:00:00.000000' "
-             "AND  o.o_orderline.ol_delivery_d < '2017-01-01 00:00:00.000000' "
-           "GROUP BY o.o_ol_cnt AS ol_cnt "
-           "ORDER BY ol_cnt ",
-
-    # Q13: The query lists the number of customers grouped and sorted by the size
-    # of orders they made. The result set of the relation between customers and
-    # the size of their orders is sorted by the size of orders and counts how
-    # many customers have dealt the same way.
-    "Q13": "SELECT c_count, COUNT(*) AS custdist "
-           "FROM  (SELECT c.c_id, COUNT(o.o_id) AS c_count "
-                   "FROM customer c LEFT OUTER JOIN orders o "
-                     "ON (c.c_w_id = o.o_w_id "
-                    "AND c.c_d_id = o.o_d_id "
-                    "AND c.c_id = o.o_c_id "
-                    "AND o.o_carrier_id > 8) "
-                   "GROUP BY c.c_id) as c_orders "
-           "GROUP BY c_orders.c_count AS c_count "
-           "ORDER BY custdist DESC, c_count DESC ",
-
-    # Q14: The query result represents the percentage of the revenue in a period
-    # of time which has been realized from promotional campaigns.
-    "Q14": "SELECT 100.00 * SUM(CASE WHEN i.i_data LIKE 'pr%' "
-                                "THEN o.o_orderline.ol_amount ELSE 0 END) / "
-                                "(1+SUM(o.o_orderline.ol_amount)) AS promo_revenue "
-           "FROM UNWIND (orders AS o WITH PATH => o_orderline), item i "
-           "WHERE o.o_orderline.ol_i_id = i.i_id "
-             "AND o.o_orderline.ol_delivery_d >= '2017-09-01 00:00:00.000000' "
-             "AND o.o_orderline.ol_delivery_d < '2017-10-01 00:00:00.000000' ",
-
-    # Q15: This query finds the top supplier or suppliers who contributed the
-    # most to the overall revenue for items shipped during a given period of time.
-    "Q15": "SELECT su.su_suppkey, su.su_name, su.su_address, su.su_phone, r.total_revenue "
-           "FROM supplier su, "
-                "(SELECT supplier_no, SUM(o.o_orderline.ol_amount) AS total_revenue "
-                 "FROM   UNWIND (orders AS o WITH PATH => o_orderline), stock s "
-                 "WHERE o.o_orderline.ol_i_id = s.s_i_id "
-                   "AND o.o_orderline.ol_supply_w_id = s.s_w_id "
-                   "AND o.o_orderline.ol_delivery_d >= '2018-01-01 00:00:00.000000' "
-                   "AND o.o_orderline.ol_delivery_d < '2018-04-01 00:00:00.000000' "
-                 "GROUP BY MOD(s.s_w_id * s.s_i_id, 10000) AS supplier_no) AS r "
-           "WHERE su.su_suppkey = r.supplier_no "
-             "AND r.total_revenue = "
-                  "(SELECT MAX(r1.total_revenue) "
-                  "FROM (SELECT supplier_no, SUM(o.o_orderline.ol_amount) AS total_revenue "
-                        "FROM UNWIND (orders AS o WITH PATH => o_orderline), stock s "
-                        "WHERE o.o_orderline.ol_i_id = s.s_i_id "
-                          "AND o.o_orderline.ol_supply_w_id = s.s_w_id "
-                          "AND o.o_orderline.ol_delivery_d >= '2018-01-01 00:00:00.000000' "
-                          "AND o.o_orderline.ol_delivery_d < '2018-04-01 00:00:00.000000' "
-                        "GROUP BY MOD(s.s_w_id * s.s_i_id, 10000) AS supplier_no) AS r1) "
-           "ORDER BY su.su_suppkey ",
-
-    # Q16: This query finds out how many suppliers are able to supply items with
-    # given attributes sorted in descending order of them. The result is grouped
-    # by the identifier of the item.
-    "Q16": "SELECT iname, brand, iprice, "
-                   "COUNT(DISTINCT MOD((s.s_w_id * s.s_i_id), 10000)) AS supplier_cnt "
-           "FROM stock s, item i "
-           "WHERE i.i_id = s.s_i_id "
-             "AND i.i_data NOT LIKE 'zz%' "
-             "AND (MOD((s.s_w_id * s.s_i_id), 10000) NOT IN "
-                                  "(SELECT su.su_suppkey "
-                                   "FROM supplier su "
-                                   "WHERE su.su_comment LIKE '%Customer%Complaints%')) "
-           "GROUP BY i.i_name AS iname, "
-                     "SUBSTRING(i.i_data, 0, 3) AS brand, i.i_price AS iprice "
-           "ORDER BY supplier_cnt DESC ",
-
-    # Q17: The query determines the yearly loss in revenue if orders just with a
-    # quantity of more than the average quantity of all orders in the system
-    # would be taken and shipped to customers.
-    "Q17": "SELECT SUM(o.o_orderline.ol_amount) / 2.0 AS avg_yearly "
-           "FROM UNWIND (orders AS o WITH PATH => o_orderline), "
-               "(SELECT iid, AVG(o1.o_orderline.ol_quantity) AS a "
-                "FROM   item i, UNWIND (orders AS o1 WITH PATH => o_orderline) "
-                "WHERE  i.i_data LIKE '%b' AND  o1.o_orderline.ol_i_id = i.i_id "
-                "GROUP BY i.i_id AS iid) t "
-           "WHERE o.o_orderline.ol_i_id = t.iid "
-             "AND o.o_orderline.ol_quantity < t.a ",
-
-    # Q18: Query 18 is ranking all customers who have ordered for more than a
-    # specific amount of money.
-    "Q18": "SELECT clast, c.c_id, o.o_id, o.o_entry_d, o.o_ol_cnt, "
-                  "SUM(o.o_orderline.ol_amount) AS ol_sum "
-           "FROM customer c, UNWIND (orders AS o WITH PATH => o_orderline) "
-           "WHERE  c.c_id = o.o_c_id "
-             "AND  c.c_w_id = o.o_w_id "
-             "AND c.c_d_id = o.o_d_id "
-           "GROUP BY o.o_id, o.o_w_id, o.o_d_id, c.c_id, c.c_name.c_last AS clast, o.o_entry_d, o.o_ol_cnt "
-           "HAVING SUM(o.o_orderline.ol_amount) > 200 "
-           "ORDER BY ol_sum DESC, o.o_entry_d  "
-           "LIMIT 100 ",
-
-    # Q19: The query is for reporting the revenue achieved by some specific
-    # attributes, as the price, the detailed information of the item and the
-    # quantity of the ordered amount of them.
-    "Q19": "SELECT SUM(o.o_orderline.ol_amount) AS revenue "
-           "FROM UNWIND (orders AS o WITH PATH => o_orderline), item i "
-           "WHERE  (( "
-                   "i.i_data LIKE '%h' "
-                   "AND o.o_orderline.ol_quantity >= 7 "
-                   "AND o.o_orderline.ol_quantity <= 17 "
-                   "AND i.i_price between 1 AND 5 "
-                   "AND o.o_w_id IN (37, 29, 70) "
-                   ") OR ( "
-                   "i.i_data LIKE '%t' "
-                   "AND o.o_orderline.ol_quantity >= 16 "
-                   "AND o.o_orderline.ol_quantity <= 26 "
-                   "AND i.i_price between 1 AND 10 "
-                   "AND o.o_w_id IN (78, 17, 6) "
-                   ") OR ( "
-                   "i.i_data LIKE '%m' "
-                   "AND o.o_orderline.ol_quantity >= 24 "
-                   "AND o.o_orderline.ol_quantity <= 34 "
-                   "AND i.i_price between 1 AND 15 "
-                   "AND  o.o_w_id IN (91, 95, 15) "
-                   ")) "
-             "AND o.o_orderline.ol_i_id = i.i_id "
-             "AND i.i_price between 1 AND 15 ",
-
-    # Q20: Suppliers in a particular nation having selected parts that may be
-    # candidates for a promotional offer if the quantity of these items is more
-    # than 50 percent of the total quantity which has been ordered since a certain date.
-    "Q20": "SELECT su.su_name, su.su_address "
-           "FROM   supplier su, nation n "
-           "WHERE  su.su_suppkey IN "
-                  "(SELECT MOD(s.s_i_id * s.s_w_id, 10000) "
-                   "FROM   stock s, UNWIND (orders AS o WITH PATH => o_orderline) "
-                   "WHERE  s.s_i_id IN (SELECT i.i_id "
-                                       "FROM item i "
-                                       "WHERE i.i_data LIKE 'co%') "
-                     "AND  o.o_orderline.ol_i_id = s.s_i_id "
-                     "AND  o.o_orderline.ol_delivery_d >= '2016-01-01 12:00:00' "
-                     "AND  o.o_orderline.ol_delivery_d < '2017-01-01 12:00:00' "
-                   "GROUP BY s.s_i_id, s.s_w_id, s.s_quantity "
-                   "HAVING 20*s.s_quantity > SUM(o.o_orderline.ol_quantity)) "
-             "AND su.su_nationkey = n.n_nationkey "
-             "AND n.n_name = 'Germany' "
-           "ORDER BY su.su_name ",
-
-    # Q21: Query 21 determines the suppliers which have shipped some required
-    # items of an order not in a timely manner for a given nation.
-    "Q21": "SELECT z.su_name, COUNT (*) AS numwait "
-           "FROM (SELECT x.su_name "
-                 "FROM (SELECT o1.o_id, o1.o_w_id, o1.o_d_id, o1.o_orderline.ol_delivery_d, "
-                              "n.n_nationkey, su.su_suppkey, s.s_w_id, s.s_i_id, su.su_name "
-                       "FROM nation n, supplier su, stock s, "
-                            "UNWIND (orders AS o1 WITH PATH => o_orderline) "
-                       "WHERE o1.o_w_id = s.s_w_id "
-                         "AND o1.o_orderline.ol_i_id = s.s_i_id "
-                         "AND MOD(s.s_w_id * s.s_i_id, 10000) = su.su_suppkey "
-                         "AND o1.o_orderline.ol_delivery_d > "
-                             "CAST(DATEADD(day, 150, CAST(o1.o_entry_d AS TIMESTAMP)) AS STRING) "
-                         "AND o1.o_entry_d BETWEEN '2017-12-01 00:00:00' "
-                                              "AND '2017-12-31 00:00:00' "
-                         "AND su.su_nationkey = n.n_nationkey "
-                         "AND n.n_name = 'Peru' ) x "
-                     "LEFT OUTER JOIN "
-                      "(SELECT o2.o_id, o2.o_w_id, o2.o_d_id, o2.o_orderline.ol_delivery_d "
-                       "FROM UNWIND (orders AS o2 WITH PATH => o_orderline) "
-                       "WHERE o2.o_entry_d BETWEEN '2017-12-01 00:00:00' "
-                                              "AND '2017-12-31 00:00:00' ) y "
-                     "ON y.o_id = x.o_id "
-                     "AND y.o_w_id = x.o_w_id "
-                     "AND y.o_d_id = x.o_d_id "
-                     "AND y.ol_delivery_d > x.ol_delivery_d "
-                  "GROUP BY x.o_w_id, x.o_d_id, x.o_id, x.n_nationkey, "
-                           "x.su_suppkey, x.s_w_id, x.s_i_id, x.su_name "
-                  "HAVING COUNT (y.o_id) = 0) z "
-           "GROUP BY z.su_name "
-           "LIMIT 100 ",
-
-    # Q22: This query lists how many customers within a specific range of country
-    # codes have not bought anything for the whole period of time and who have a
-    # greater than average balance on their account. The county code is represented
-    # by the first two characters of the phone number.
-    "Q22": "SELECT country, COUNT(*) AS numcust, SUM(c.c_balance) AS totacctbal "
-           "FROM customer c"
-           "WHERE SUBSTRING(c.c_phone,0,1) IN "
-                                             "('1','2','3','4','5','6','7') "
-             "AND c.c_balance > (SELECT AVG(c1.c_balance) "
-                                "FROM customer c1"
-                                "WHERE c1.c_balance > 0.00 "
-                                  "AND SUBSTRING(c1.c_phone,0,1) IN "
-                                        "('1','2','3','4','5','6','7') ) "
-             "AND NOT EXISTS (SELECT 1 "
-                             "FROM orders o "
-                             "WHERE o.o_c_id = c.c_id "
-                               "AND o.o_w_id = c.c_w_id "
-                               "AND o.o_d_id = c.c_d_id "
-                               "AND o.o_entry_d BETWEEN '2013-12-01 00:00:00' AND '2013-12-31 00:00:00') "
-           "GROUP BY SUBSTRING(c.c_state,0,1) AS country "
-           "ORDER BY country "
-}
-
-CH2PP_MONGO_QUERIES = {
-    # Q01: This query reports the total amount and quantity of all shipped orderlines
-    # given by a specific time period. Additionally it informs about the average
-    # amount and quantity plus the total count of all these orderlines ordered
-    # by the individual orderline number.
-    "Q01": "SELECT ol_number, "
-                  "SUM(o.o_orderline.ol_quantity) AS sum_qty, "
-                  "SUM(o.o_orderline.ol_amount) AS sum_amount, "
-                  "AVG(o.o_orderline.ol_quantity) AS avg_qty, "
-                  "AVG(o.o_orderline.ol_amount) AS avg_amount, "
-                  "COUNT(*) AS count_order "
-           "FROM UNWIND (orders AS o WITH PATH => o_orderline) "
-           "WHERE o.o_orderline.ol_delivery_d  > '2014-07-01 00:00:00' "
-           "GROUP BY o_orderline.ol_number AS ol_number "
-           "ORDER BY ol_number ",
-
-    # Q02: Query for listing suppliers and their distributed items having the lowest
-    # stock level for a certain item and certain region.
-    "Q02": "SELECT su.su_suppkey, su.su_name, n.n_name, i.i_id, i.i_name, "
-                   "su.su_address, su.su_phone, su.su_comment "
-           "FROM   item i,  supplier su, stock s, nation n, region r, "
-                  "(SELECT s1.s_i_id as m_i_id, MIN(s1.s_quantity) AS m_s_quantity "
-                   "FROM stock s1, supplier su1, nation n1, region r1 "
-                   "WHERE MOD(s1.s_w_id * s1.s_i_id, 10000) = su1.su_suppkey "
-                     "AND su1.su_nationkey=n1.n_nationkey "
-                     "AND n1.n_regionkey=r1.r_regionkey "
-                     "AND r1.r_name LIKE 'Europ%' "
-                   "GROUP BY s1.s_i_id) m "
-           "WHERE i.i_id = s.s_i_id "
-             "AND MOD(s.s_w_id * s.s_i_id, 10000) = su.su_suppkey "
-             "AND su.su_nationkey = n.n_nationkey "
-             "AND n.n_regionkey = r.r_regionkey "
-             "AND i.i_data LIKE '%b' "
-             "AND r.r_name LIKE 'Europ%' "
-             "AND i.i_id=m.m_i_id "
-             "AND s.s_quantity = m.m_s_quantity "
-           "ORDER BY n.n_name, su.su_name, i.i_id "
-           "LIMIT 100 ",
-
-
-    # Q03: Unshipped orders with the highest price amount for a customer will be
-    # listed within a given state and with orders newer than a specific timestamp.
-    # This list will be sorted by the descending amount.
-    "Q03": "SELECT o.o_id, o.o_w_id, o.o_d_id, "
-                  "SUM(o.o_orderline.ol_amount) AS revenue, o.o_entry_d "
-           "FROM UNWIND (customer AS c WITH PATH => c_addresses), "
-                "neworder no, "
-                "UNWIND (orders AS o WITH PATH => o_orderline) "
-           "WHERE c.c_addresses.c_address_kind = 'shipping' "
-             "AND c.c_addresses.c_state LIKE 'a%' "
-             "AND c.c_id = o.o_c_id "
-             "AND c.c_w_id = o.o_w_id "
-             "AND c.c_d_id = o.o_d_id "
-             "AND no.no_w_id = o.o_w_id "
-             "AND no.no_d_id = o.o_d_id "
-             "AND no.no_o_id = o.o_id "
-             "AND o.o_entry_d < '2017-03-15 00:00:00.000000' "
-           "GROUP BY o.o_id, o.o_w_id, o.o_d_id, o.o_entry_d "
-           "ORDER BY revenue DESC, o.o_entry_d ",
-
-    # Q04: This query is listing all orders with orderlines or just parts of them
-    # shipped after the entry date of their booking.
-    "Q04": "SELECT ol_cnt, COUNT(*) as order_count "
-           "FROM   orders o "
-           "WHERE  o.o_entry_d >= '2015-07-01 00:00:00.000000' "
-             "AND o.o_entry_d < '2015-10-01 00:00:00.000000' "
-             "AND EXISTS (SELECT 1 "
-                         "FROM UNWIND (orders AS o WITH PATH => o_orderline) "
-                         "WHERE o.o_orderline.ol_delivery_d >= "
-                                "CAST(DATEADD(week, 1, CAST(o.o_entry_d AS TIMESTAMP)) AS STRING)) "
-           "GROUP BY o.o_ol_cnt AS ol_cnt "
-           "ORDER BY ol_cnt ",
-
-    # Q05: Query result for getting information about achieved revenues of nations
-    # within a given region. All nations are sorted by the total amount of revenue
-    # gained since the given date.
-    "Q05": "SELECT  nname, ROUND(SUM(o.o_orderline.ol_amount), 2) AS revenue "
-           "FROM    UNWIND (customer AS c WITH PATH => c_addresses), "
-                   "UNWIND (orders AS o WITH PATH => o_orderline), "
-                   "stock s, supplier su, nation n, region r "
-           "WHERE    c.c_addresses.c_address_kind = 'shipping' "
-             "AND    c.c_id = o.o_c_id "
-             "AND    c.c_w_id = o.o_w_id "
-             "AND    c.c_d_id = o.o_d_id "
-             "AND    o.o_w_id = s.s_w_id "
-             "AND    o.o_orderline.ol_i_id = s.s_i_id "
-             "AND    MOD(s.s_w_id * s.s_i_id, 10000) = su.su_suppkey "
-             "AND    POSITION(SUBSTRING(c.c_addresses.c_state,0,1) IN '##########%%%%%%%%%%##########%%%%%%%%%%########0123456789#######ABCDEFGHIJKLMNOPQRSTUVWXYZ%%%%%%abcdefghijklmnopqrstuvwxyz') = su.su_nationkey "
-             "AND    POSITION(SUBSTRING(c.c_addresses.c_state,0,1) IN '##########%%%%%%%%%%##########%%%%%%%%%%########0123456789#######ABCDEFGHIJKLMNOPQRSTUVWXYZ%%%%%%abcdefghijklmnopqrstuvwxyz') = n.n_nationkey "
-             "AND    su.su_nationkey = n.n_nationkey "
-             "AND    n.n_regionkey = r.r_regionkey "
-             "AND    r.r_name = 'Asia' "
-             "AND    o.o_entry_d >= '2016-01-01 00:00:00.000000' "
-             "AND    o.o_entry_d < '2017-01-01 00:00:00.000000' "
-           "GROUP BY n.n_name AS nname "
-           "ORDER BY revenue DESC ",
-
-    # Q06: Query lists the total amount of archived revenue from orderlines which
-    # were delivered in a specific period and a certain quantity.
-    "Q06": "SELECT SUM(o.o_orderline.ol_amount) as revenue "
-           "FROM UNWIND (orders AS o WITH PATH => o_orderline) "
-           "WHERE  o.o_orderline.ol_delivery_d >= '2016-01-01 00:00:00.000000' "
-             "AND  o.o_orderline.ol_delivery_d < '2017-01-01 00:00:00.000000' "
-             "AND  o.o_orderline.ol_amount > 600 ",
-
-    # Q07: Query for showing the bi-directional trade volume between two given
-    # nations sorted by their names and the considered years.
-    "Q07": "SELECT supp_nation, cust_nation, l_year, "
-	           "ROUND(SUM(o.o_orderline.ol_amount),2) AS revenue "
-           "FROM   supplier su, stock s, "
-                   "UNWIND (orders AS o WITH PATH => o_orderline), "
-                   "UNWIND (customer AS c WITH PATH => c_addresses), "
-                   "nation n1, nation n2 "
-           "WHERE    o.o_orderline.ol_supply_w_id = s.s_w_id "
-             "AND    o.o_orderline.ol_i_id = s.s_i_id "
-             "AND    MOD(s.s_w_id * s.s_i_id, 10000) = su.su_suppkey "
-             "AND    c.c_addresses.c_address_kind = 'shipping' "
-             "AND    c.c_id = o.o_c_id "
-             "AND    c.c_w_id = o.o_w_id "
-             "AND    c.c_d_id = o.o_d_id "
-             "AND    su.su_nationkey = n1.n_nationkey "
-             "AND    POSITION(SUBSTRING(c.c_addresses.c_state,0,1) IN '##########%%%%%%%%%%##########%%%%%%%%%%########0123456789#######ABCDEFGHIJKLMNOPQRSTUVWXYZ%%%%%%abcdefghijklmnopqrstuvwxyz') = n2.n_nationkey "
-             "AND    ((n1.n_name = 'Germany' and n2.n_name = 'Cambodia') OR "
-                     "(n1.n_name = 'Cambodia' and n2.n_name = 'Germany')) "
-             "AND    o.o_orderline.ol_delivery_d BETWEEN '2017-01-01 00:00:00.000000' "
-                                         "AND '2018-12-31 00:00:00.000000' "
-           "GROUP BY su.su_nationkey AS supp_nation, "
-                     "SUBSTRING(c.c_addresses.c_state,0,1) AS cust_nation, "
-                     "EXTRACT(YEAR FROM CAST(o.o_entry_d AS TIMESTAMP)) AS l_year "
-           "ORDER BY supp_nation, cust_nation, l_year ",
-
-    # Q08: This query lists the market share of a given nation for customers from
-    # a certain region in which kinds of items are "produced".
-    "Q08": "SELECT l_year, "
-                  "ROUND((SUM(CASE WHEN n2.n_name = 'Germany' "
-                  "THEN o.o_orderline.ol_amount "
-                  "ELSE 0 END) / SUM(o.o_orderline.ol_amount)),2) AS mkt_share "
-           "FROM  item i, supplier su, stock s, "
-                 "UNWIND (orders AS o WITH PATH => o_orderline), "
-                 "UNWIND (customer AS c WITH PATH => c_addresses), "
-                 "nation n1, nation n2, region r "
-           "WHERE i.i_id = s.s_i_id "
-             "AND o.o_orderline.ol_i_id = s.s_i_id "
-             "AND o.o_orderline.ol_supply_w_id = s.s_w_id "
-             "AND MOD(s.s_w_id * s.s_i_id, 10000) = su.su_suppkey "
-             "AND c.c_id = o.o_c_id "
-             "AND c.c_w_id = o.o_w_id "
-             "AND c.c_d_id = o.o_d_id "
-             "AND c.c_addresses.c_address_kind = 'shipping' "
-             "AND n1.n_nationkey = POSITION(SUBSTRING(c.c_addresses.c_state,0,1) IN '##########%%%%%%%%%%##########%%%%%%%%%%########0123456789#######ABCDEFGHIJKLMNOPQRSTUVWXYZ%%%%%%abcdefghijklmnopqrstuvwxyz') "
-             "AND n1.n_regionkey = r.r_regionkey "
-             "AND o.o_orderline.ol_i_id < 1000 "
-             "AND r.r_name = 'Europe' "
-             "AND su.su_nationkey = n2.n_nationkey "
-             "AND o.o_entry_d BETWEEN '2017-01-01 00:00:00.000000' AND '2018-12-31 00:00:00.000000' "
-             "AND i.i_data LIKE '%b' "
-             "AND i.i_id = o.o_orderline.ol_i_id "
-           "GROUP BY EXTRACT(YEAR FROM CAST(o.o_entry_d AS TIMESTAMP)) AS l_year "
-           "ORDER BY l_year ",
-
-    # Q09: This query describes how much profit has been made on a selection of
-    # items for each nation and each year. The result list will be sorted by the
-    # name of the nation and the financial year.
-    "Q09": "SELECT  n_name, l_year, "
-                   "SUM(o.o_orderline.ol_amount) AS sum_profit "
-           "FROM    item i, stock s, supplier su, "
-                   "UNWIND (orders AS o WITH PATH => o_orderline), nation n "
-           "WHERE   o.o_orderline.ol_i_id = s.s_i_id "
-             "AND    o.o_orderline.ol_supply_w_id = s.s_w_id "
-             "AND    MOD(s.s_w_id * s.s_i_id, 10000) = su.su_suppkey "
-             "AND    o.o_orderline.ol_i_id = i.i_id "
-             "AND    su.su_nationkey = n.n_nationkey "
-             "AND    i.i_data like '%bb' "
-           "GROUP BY n.n_name AS n_name, "
-                     "EXTRACT(YEAR FROM CAST(o.o_entry_d AS TIMESTAMP)) AS l_year "
-           "ORDER BY n_name, l_year DESC ",
-    # Q10: Query for analyzing the expenses of all customers listing their living
-    # country, some detail of them and the amount of money which they have used
-    # to take their orders since a specific date. The whole list is sorted by the
-    # amount of the customers’ orders.
-    "Q10": "SELECT cid, clast, SUM(o.o_orderline.ol_amount) AS revenue, "
-                   "ccity, cphone, nname "
-           "FROM UNWIND ((SELECT * FROM "
-                "UNWIND (customer AS ca WITH PATH => c_addresses)) "
-                        "AS c WITH PATH => c_phones), "
-                "UNWIND (orders AS o WITH PATH => o_orderline), nation n "
-           "WHERE  c.c_id = o.o_c_id "
-             "AND  c.c_w_id = o.o_w_id "
-             "AND  c.c_d_id = o.o_d_id "
-             "AND  o.o_entry_d >= '2015-10-01 00:00:00.000000' "
-             "AND  o.o_entry_d < '2016-01-01 00:00:00.000000' "
-             "AND  c.c_addresses.c_address_kind = 'shipping' "
-             "AND  c.c_phones.c_phone_kind = 'contact' "
-             "AND n.n_nationkey = POSITION(SUBSTRING(c.c_addresses.c_state,0,1) IN '##########%%%%%%%%%%##########%%%%%%%%%%########0123456789#######ABCDEFGHIJKLMNOPQRSTUVWXYZ%%%%%%abcdefghijklmnopqrstuvwxyz') "
-           "GROUP BY c.c_id AS cid, c.c_name.c_last AS clast, c.c_addresses.c_city AS ccity, "
-                    "c.c_phones.c_phone_number AS cphone, n.n_name AS nname "
-           "ORDER BY revenue DESC "
-           "LIMIT 20 ",
-
-    # Q11: Most important items (items which are often involved in orders and
-    # therefore often bought by customers) supplied by supplier of a given nation.
-    "Q11": "SELECT s.s_i_id, SUM(s.s_order_cnt) as ordercount "
-           "FROM   stock s,  supplier su, nation n "
-           "WHERE  MOD(s.s_w_id * s.s_i_id, 10000) = su.su_suppkey "
-             "AND  su.su_nationkey = n.n_nationkey "
-             "AND  n.n_name = 'Germany' "
-           "GROUP BY s.s_i_id "
-           "HAVING SUM(s.s_order_cnt) > "
-                  "(SELECT SUM(s1.s_order_cnt) * 0.00005 "
-                   "FROM stock s1, supplier su1, nation n1 "
-                   "WHERE MOD(s1.s_w_id * s1.s_i_id, 10000) = su1.su_suppkey "
-                     "AND su1.su_nationkey = n1.n_nationkey "
-                     "AND n1.n_name = 'Germany') "
-           "ORDER BY ordercount DESC ",
-
-    # Q12: This query counts the amount of orders grouped by the number of
-    # orderlines in each order attending the number of orders which are shipped
-    # with a higher or lower order priority.
-    "Q12": "SELECT ol_cnt, "
-                   "SUM (CASE WHEN o.o_carrier_id = 1 OR o.o_carrier_id = 2 "
-                         "THEN 1 ELSE 0 END) AS high_line_COUNT, "
-                   "SUM (CASE WHEN o.o_carrier_id <> 1 AND o.o_carrier_id <> 2 "
-                         "THEN 1 ELSE 0 END) AS low_line_COUNT "
-           "FROM UNWIND (orders AS o WITH PATH => o_orderline) "
-           "WHERE  o.o_entry_d <= o.o_orderline.ol_delivery_d "
-             "AND  o.o_orderline.ol_delivery_d >= '2016-01-01 00:00:00.000000' "
-             "AND  o.o_orderline.ol_delivery_d < '2017-01-01 00:00:00.000000' "
-           "GROUP BY o.o_ol_cnt AS ol_cnt "
-           "ORDER BY ol_cnt ",
-
-    # Q13: The query lists the number of customers grouped and sorted by the size
-    # of orders they made. The result set of the relation between customers and
-    # the size of their orders is sorted by the size of orders and counts how
-    # many customers have dealt the same way.
-    "Q13": "SELECT c_count, COUNT(*) AS custdist "
-           "FROM  (SELECT c.c_id, COUNT(o.o_id) AS c_count "
-                   "FROM customer c LEFT OUTER JOIN orders o "
-                     "ON (c.c_w_id = o.o_w_id "
-                    "AND c.c_d_id = o.o_d_id "
-                    "AND c.c_id = o.o_c_id "
-                    "AND o.o_carrier_id > 8) "
-                   "GROUP BY c.c_id) as c_orders "
-           "GROUP BY c_orders.c_count AS c_count "
-           "ORDER BY custdist DESC, c_count DESC ",
-
-    # Q14: The query result represents the percentage of the revenue in a period
-    # of time which has been realized from promotional campaigns.
-    "Q14": "SELECT 100.00 * SUM(CASE WHEN i.i_data LIKE 'pr%' "
-                                "THEN o.o_orderline.ol_amount ELSE 0 END) / "
-                                "(1+SUM(o.o_orderline.ol_amount)) AS promo_revenue "
-           "FROM UNWIND (orders AS o WITH PATH => o_orderline), item i "
-           "WHERE o.o_orderline.ol_i_id = i.i_id "
-             "AND o.o_orderline.ol_delivery_d >= '2017-09-01 00:00:00.000000' "
-             "AND o.o_orderline.ol_delivery_d < '2017-10-01 00:00:00.000000' ",
-
-    # Q15: This query finds the top supplier or suppliers who contributed the
-    # most to the overall revenue for items shipped during a given period of time.
-    "Q15": "SELECT su.su_suppkey, su.su_name, su.su_address, su.su_phone, r.total_revenue "
-           "FROM supplier su, "
-                "(SELECT supplier_no, SUM(o.o_orderline.ol_amount) AS total_revenue "
-                 "FROM   UNWIND (orders AS o WITH PATH => o_orderline), stock s "
-                 "WHERE o.o_orderline.ol_i_id = s.s_i_id "
-                   "AND o.o_orderline.ol_supply_w_id = s.s_w_id "
-                   "AND o.o_orderline.ol_delivery_d >= '2018-01-01 00:00:00.000000' "
-                   "AND o.o_orderline.ol_delivery_d < '2018-04-01 00:00:00.000000' "
-                 "GROUP BY MOD(s.s_w_id * s.s_i_id, 10000) AS supplier_no) AS r "
-           "WHERE su.su_suppkey = r.supplier_no "
-             "AND r.total_revenue = "
-                  "(SELECT MAX(r1.total_revenue) "
-                  "FROM (SELECT supplier_no, SUM(o.o_orderline.ol_amount) AS total_revenue "
-                        "FROM UNWIND (orders AS o WITH PATH => o_orderline), stock s "
-                        "WHERE o.o_orderline.ol_i_id = s.s_i_id "
-                          "AND o.o_orderline.ol_supply_w_id = s.s_w_id "
-                          "AND o.o_orderline.ol_delivery_d >= '2018-01-01 00:00:00.000000' "
-                          "AND o.o_orderline.ol_delivery_d < '2018-04-01 00:00:00.000000' "
-                        "GROUP BY MOD(s.s_w_id * s.s_i_id, 10000) AS supplier_no) AS r1) "
-           "ORDER BY su.su_suppkey ",
-
-    # Q16: This query finds out how many suppliers are able to supply items with
-    # given attributes sorted in descending order of them. The result is grouped
-    # by the identifier of the item.
-    "Q16": "SELECT iname, brand, iprice, "
-                   "COUNT(DISTINCT MOD((s.s_w_id * s.s_i_id), 10000)) AS supplier_cnt "
-           "FROM stock s, item i "
-           "WHERE i.i_id = s.s_i_id "
-             "AND i.i_data NOT LIKE 'zz%' "
-             "AND (MOD((s.s_w_id * s.s_i_id), 10000) NOT IN "
-                                  "(SELECT su.su_suppkey "
-                                   "FROM supplier su "
-                                   "WHERE su.su_comment LIKE '%Customer%Complaints%')) "
-           "GROUP BY i.i_name AS iname, "
-                     "SUBSTRING(i.i_data, 0, 3) AS brand, i.i_price AS iprice "
-           "ORDER BY supplier_cnt DESC ",
-
-    # Q17: The query determines the yearly loss in revenue if orders just with a
-    # quantity of more than the average quantity of all orders in the system
-    # would be taken and shipped to customers.
-    "Q17": "SELECT SUM(o.o_orderline.ol_amount) / 2.0 AS avg_yearly "
-           "FROM UNWIND (orders AS o WITH PATH => o_orderline), "
-               "(SELECT iid, AVG(o1.o_orderline.ol_quantity) AS a "
-                "FROM   item i, UNWIND (orders AS o1 WITH PATH => o_orderline) "
-                "WHERE  i.i_data LIKE '%b' AND  o1.o_orderline.ol_i_id = i.i_id "
-                "GROUP BY i.i_id AS iid) t "
-           "WHERE o.o_orderline.ol_i_id = t.iid "
-             "AND o.o_orderline.ol_quantity < t.a ",
-
-    # Q18: Query 18 is ranking all customers who have ordered for more than a
-    # specific amount of money.
-    "Q18": "SELECT clast, c.c_id, o.o_id, o.o_entry_d, o.o_ol_cnt, "
-                  "SUM(o.o_orderline.ol_amount) AS ol_sum "
-           "FROM customer c, UNWIND (orders AS o WITH PATH => o_orderline) "
-           "WHERE  c.c_id = o.o_c_id "
-             "AND  c.c_w_id = o.o_w_id "
-             "AND c.c_d_id = o.o_d_id "
-           "GROUP BY o.o_id, o.o_w_id, o.o_d_id, c.c_id, c.c_name.c_last AS clast, o.o_entry_d, o.o_ol_cnt "
-           "HAVING SUM(o.o_orderline.ol_amount) > 200 "
-           "ORDER BY ol_sum DESC, o.o_entry_d  "
-           "LIMIT 100 ",
-
-    # Q19: The query is for reporting the revenue achieved by some specific
-    # attributes, as the price, the detailed information of the item and the
-    # quantity of the ordered amount of them.
-    "Q19": "SELECT SUM(o.o_orderline.ol_amount) AS revenue "
-           "FROM UNWIND (orders AS o WITH PATH => o_orderline), item i "
-           "WHERE  (( "
-                   "i.i_data LIKE '%h' "
-                   "AND o.o_orderline.ol_quantity >= 7 "
-                   "AND o.o_orderline.ol_quantity <= 17 "
-                   "AND i.i_price between 1 AND 5 "
-                   "AND o.o_w_id IN (37, 29, 70) "
-                   ") OR ( "
-                   "i.i_data LIKE '%t' "
-                   "AND o.o_orderline.ol_quantity >= 16 "
-                   "AND o.o_orderline.ol_quantity <= 26 "
-                   "AND i.i_price between 1 AND 10 "
-                   "AND o.o_w_id IN (78, 17, 6) "
-                   ") OR ( "
-                   "i.i_data LIKE '%m' "
-                   "AND o.o_orderline.ol_quantity >= 24 "
-                   "AND o.o_orderline.ol_quantity <= 34 "
-                   "AND i.i_price between 1 AND 15 "
-                   "AND  o.o_w_id IN (91, 95, 15) "
-                   ")) "
-             "AND o.o_orderline.ol_i_id = i.i_id "
-             "AND i.i_price between 1 AND 15 ",
-
-    # Q20: Suppliers in a particular nation having selected parts that may be
-    # candidates for a promotional offer if the quantity of these items is more
-    # than 50 percent of the total quantity which has been ordered since a certain date.
-    "Q20": "SELECT su.su_name, su.su_address "
-           "FROM   supplier su, nation n "
-           "WHERE  su.su_suppkey IN "
-                  "(SELECT MOD(s.s_i_id * s.s_w_id, 10000) "
-                   "FROM   stock s, UNWIND (orders AS o WITH PATH => o_orderline) "
-                   "WHERE  s.s_i_id IN (SELECT i.i_id "
-                                       "FROM item i "
-                                       "WHERE i.i_data LIKE 'co%') "
-                     "AND  o.o_orderline.ol_i_id = s.s_i_id "
-                     "AND  o.o_orderline.ol_delivery_d >= '2016-01-01 12:00:00' "
-                     "AND  o.o_orderline.ol_delivery_d < '2017-01-01 12:00:00' "
-                   "GROUP BY s.s_i_id, s.s_w_id, s.s_quantity "
-                   "HAVING 20*s.s_quantity > SUM(o.o_orderline.ol_quantity)) "
-             "AND su.su_nationkey = n.n_nationkey "
-             "AND n.n_name = 'Germany' "
-           "ORDER BY su.su_name ",
-
-    # Q21: Query 21 determines the suppliers which have shipped some required
-    # items of an order not in a timely manner for a given nation.
-    "Q21": "SELECT z.su_name, COUNT (*) AS numwait "
-           "FROM (SELECT x.su_name "
-                 "FROM (SELECT o1.o_id, o1.o_w_id, o1.o_d_id, o1.o_orderline.ol_delivery_d, "
-                              "n.n_nationkey, su.su_suppkey, s.s_w_id, s.s_i_id, su.su_name "
-                       "FROM nation n, supplier su, stock s, "
-                            "UNWIND (orders AS o1 WITH PATH => o_orderline) "
-                       "WHERE o1.o_w_id = s.s_w_id "
-                         "AND o1.o_orderline.ol_i_id = s.s_i_id "
-                         "AND MOD(s.s_w_id * s.s_i_id, 10000) = su.su_suppkey "
-                         "AND o1.o_orderline.ol_delivery_d > "
-                             "CAST(DATEADD(day, 150, CAST(o1.o_entry_d AS TIMESTAMP)) AS STRING) "
-                         "AND o1.o_entry_d BETWEEN '2017-12-01 00:00:00' "
-                                              "AND '2017-12-31 00:00:00' "
-                         "AND su.su_nationkey = n.n_nationkey "
-                         "AND n.n_name = 'Peru' ) x "
-                     "LEFT OUTER JOIN "
-                      "(SELECT o2.o_id, o2.o_w_id, o2.o_d_id, o2.o_orderline.ol_delivery_d "
-                       "FROM UNWIND (orders AS o2 WITH PATH => o_orderline) "
-                       "WHERE o2.o_entry_d BETWEEN '2017-12-01 00:00:00' "
-                                              "AND '2017-12-31 00:00:00' ) y "
-                     "ON y.o_id = x.o_id "
-                     "AND y.o_w_id = x.o_w_id "
-                     "AND y.o_d_id = x.o_d_id "
-                     "AND y.ol_delivery_d > x.ol_delivery_d "
-                  "GROUP BY x.o_w_id, x.o_d_id, x.o_id, x.n_nationkey, "
-                           "x.su_suppkey, x.s_w_id, x.s_i_id, x.su_name "
-                  "HAVING COUNT (y.o_id) = 0) z "
-           "GROUP BY z.su_name "
-           "LIMIT 100 ",
-
-    # Q22: This query lists how many customers within a specific range of country
-    # codes have not bought anything for the whole period of time and who have a
-    # greater than average balance on their account. The county code is represented
-    # by the first two characters of the phone number.
-    "Q22": "SELECT country, COUNT(*) AS numcust, SUM(c.c_balance) AS totacctbal "
-           "FROM UNWIND ((SELECT * "
-                         "FROM UNWIND (customer AS ca WITH PATH => c_addresses)) AS c WITH PATH => c_phones) "
-           "WHERE SUBSTRING(c.c_phones.c_phone_number,0,1) IN "
-                                             "('1','2','3','4','5','6','7') "
-             "AND  c.c_addresses.c_address_kind = 'shipping' "
-             "AND  c.c_phones.c_phone_kind = 'contact' "
-             "AND c.c_balance > (SELECT AVG(c1.c_balance) "
-                                "FROM UNWIND (customer AS c1 WITH PATH => c_phones) "
-                                "WHERE c1.c_balance > 0.00 "
-                                  "AND c1.c_phones.c_phone_kind = 'contact' "
-                                  "AND SUBSTRING(c1.c_phones.c_phone_number,0,1) IN "
-                                        "('1','2','3','4','5','6','7') ) "
-             "AND NOT EXISTS (SELECT 1 "
-                             "FROM orders o "
-                             "WHERE o.o_c_id = c.c_id "
-                               "AND o.o_w_id = c.c_w_id "
-                               "AND o.o_d_id = c.c_d_id "
-                               "AND o.o_entry_d BETWEEN '2013-12-01 00:00:00' AND '2013-12-31 00:00:00') "
-           "GROUP BY SUBSTRING(c.c_addresses.c_state,0,1) AS country "
-           "ORDER BY country "
-}
-
 CH2_QUERIES_PERM = [
     ["Q14", "Q02", "Q09", "Q20", "Q06", "Q17", "Q18", "Q08", "Q21", "Q13", "Q03", "Q22", "Q16", "Q04", "Q11", "Q15", "Q01", "Q10", "Q19", "Q05", "Q07", "Q12"],
 
@@ -2976,5 +1833,4 @@ CH2_QUERIES_PERM = [
 
     ["Q13", "Q15", "Q17", "Q01", "Q22", "Q11", "Q03", "Q04", "Q07", "Q20", "Q14", "Q21", "Q09", "Q08", "Q02", "Q18", "Q16", "Q06", "Q10", "Q12", "Q05",  "Q19"]
 ]
-
 
