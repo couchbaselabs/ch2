@@ -207,6 +207,8 @@ if __name__ == '__main__':
                          help='query-url <ip>:port', default = "127.0.0.1:8093")
     aparser.add_argument('--multi-query-url',
                          help = 'multi-query-url <ip>:port', default = "127.0.0.1:8093")
+    aparser.add_argument('--atlas-sql-url',
+                         help='atlas-sql-url <ip>', default = "127.0.0.1")
     aparser.add_argument('--data-url',
                          help='data-url <ip>', default = "127.0.0.1")
     aparser.add_argument('--multi-data-url', help = 'multi-data-url <ip>', default = "127.0.0.1")
@@ -285,6 +287,7 @@ if __name__ == '__main__':
     if args['debug']: logging.getLogger().setLevel(logging.DEBUG)
     query_url = "127.0.0.1:8093"
     multi_query_url = "127.0.0.1:8093"
+    atlas_sql_url = "127.0.0.1"
     data_url = "127.0.0.1"
     multi_data_url = "127.0.0.1"
     analytics_url = "127.0.0.1:8095"
@@ -301,6 +304,10 @@ if __name__ == '__main__':
     if args['multi_query_url']:
         multi_query_url = args['multi_query_url']
     os.environ["MULTI_QUERY_URL"] = multi_query_url
+
+    if args['atlas_sql_url']:
+        atlas_sql_url = args['atlas_sql_url']
+    os.environ["ATLAS_SQL_URL"] = atlas_sql_url
 
     if args['data_url']:
         data_url = args['data_url']
@@ -504,7 +511,7 @@ if __name__ == '__main__':
     config['execute'] = False
     if config['reset']: logging.info("Reseting database")
     driver.loadConfig(config)
-    logging.info("Initializing CH2 benchmark using %s" % driver)
+    logging.info("Initializing " + schema +" benchmark using %s" % driver)
 
     ## Create ScaleParameters
     scaleParameters = scaleparameters.makeWithScaleFactor(args['warehouses'], args['starting_warehouse'], args['scalefactor'])
@@ -516,7 +523,7 @@ if __name__ == '__main__':
     numClients = numTClients + numAClients
     load_time = None
     if not args['no_load']:
-        logging.info("Loading CH2 benchmark data using %s" % (driver))
+        logging.info("Loading " + schema + " benchmark data using %s" % (driver))
         load_start = time.time()
         if numClients == 1:
             l = loader.Loader(driver, scaleParameters, range(scaleParameters.starting_warehouse, scaleParameters.ending_warehouse+1), True, maxExtraFields, datagenSeed)
@@ -550,3 +557,4 @@ if __name__ == '__main__':
     ## IF
 
 ## MAIN
+
