@@ -71,7 +71,7 @@ def getDrivers():
 ## ==============================================
 ## startLoading
 ## ==============================================
-def startLoading(driverClass, schema, scaleParameters, args, config, customerExtraFields, ordersExtraFields, itemExtraFields, maxExtraFields, load_mode, kv_timeout, bulkload_batch_size, datagenSeed):
+def startLoading(driverClass, schema, scaleParameters, args, config, customerExtraFields, ordersExtraFields, itemExtraFields, maxExtraFields, load_mode, load_format, kv_timeout, bulkload_batch_size, datagenSeed):
     numClients = args['tclients'] + args['aclients']
     logging.debug("Creating client pool with %d processes" % numClients)
     pool = multiprocessing.Pool(numClients)
@@ -86,7 +86,7 @@ def startLoading(driverClass, schema, scaleParameters, args, config, customerExt
 
     loader_results = [ ]
     for i in range(numClients):
-        r = pool.apply_async(loaderFunc, (i, driverClass, schema, scaleParameters, args, config, w_ids[i], customerExtraFields, ordersExtraFields, itemExtraFields, maxExtraFields, load_mode, kv_timeout, bulkload_batch_size, datagenSeed, debug))
+        r = pool.apply_async(loaderFunc, (i, driverClass, schema, scaleParameters, args, config, w_ids[i], customerExtraFields, ordersExtraFields, itemExtraFields, maxExtraFields, load_mode, load_format, kv_timeout, bulkload_batch_size, datagenSeed, debug))
         loader_results.append(r)
     ## FOR
 
@@ -98,8 +98,8 @@ def startLoading(driverClass, schema, scaleParameters, args, config, customerExt
 ## ==============================================
 ## loaderFunc
 ## ==============================================
-def loaderFunc(clientId, driverClass, schema, scaleParameters, args, config, w_ids, customerExtraFields, ordersExtraFields, itemExtraFields, maxExtraFields, load_mode, kv_timeout, bulkload_batch_size, datagenSeed, debug):
-    driver = driverClass(args['ddl'], clientId, "L", schema, {}, 0, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size)
+def loaderFunc(clientId, driverClass, schema, scaleParameters, args, config, w_ids, customerExtraFields, ordersExtraFields, itemExtraFields, maxExtraFields, load_mode, load_format, kv_timeout, bulkload_batch_size, datagenSeed, debug):
+    driver = driverClass(args['ddl'], clientId, "L", schema, {}, 0, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, loadformat, kv_timeout, bulkload_batch_size)
     assert driver != None
     logging.debug("Starting client execution: %s [warehouses=%d]" % (driver, len(w_ids)))
 
@@ -256,8 +256,11 @@ if __name__ == '__main__':
                          help='Enable loading the data through the data service')
     aparser.add_argument('--qrysvc-load', action='store_true',
                          help='Enable loading the data through the query service')
+    aparser.add_argument('--load-csv', action='store_true',
+                         help='Load the data in csv format for ch2ppf')
     aparser.add_argument('--ch2p', action='store_true', help='Create CH2+ schema')
     aparser.add_argument('--ch2pp', action='store_true', help='Create CH2++ schema')
+    aparser.add_argument('--ch2ppf', action='store_true', help='Create CH2++ flat schema')
     aparser.add_argument('--nonOptimizedQueries', action='store_true', help='Run the out of the box unoptimized 22 analytical CH2 queries')
     aparser.add_argument('--customerExtraFields', default=constants.CH2_CUSTOMER_EXTRA_FIELDS["NOT_SET"], type=int,
                          help='Number of extra unused fields in Customer')
@@ -362,6 +365,7 @@ if __name__ == '__main__':
     schema = constants.CH2_DRIVER_SCHEMA["CH2"]
     analyticalQueries = constants.CH2_DRIVER_ANALYTICAL_QUERIES["HAND_OPTIMIZED_QUERIES"]
     load_mode = constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]
+    load_format = constants.CH2_DRIVER_LOAD_FORMAT["JSON"]
     bulkload_batch_size = constants.CH2_DRIVER_BULKLOAD_BATCH_SIZE
     kv_timeout = constants.CH2_DRIVER_KV_TIMEOUT
 
@@ -369,6 +373,11 @@ if __name__ == '__main__':
         schema = constants.CH2_DRIVER_SCHEMA["CH2P"]
     elif args['ch2pp']:
         schema = constants.CH2_DRIVER_SCHEMA["CH2PP"]
+    elif args['ch2ppf']:
+        schema = constants.CH2_DRIVER_SCHEMA["CH2PPF"]
+        if args['load_csv']:
+            load_format = constants.CH2_DRIVER_LOAD_FORMAT["CSV"]
+
     if args['nonOptimizedQueries']:
         analyticalQueries = constants.CH2_DRIVER_ANALYTICAL_QUERIES["NON_OPTIMIZED_QUERIES"]
     datagenSeed = args['datagenSeed']
@@ -413,7 +422,7 @@ if __name__ == '__main__':
             logging.info("Cannot specify multiple types of load")
             sys.exit(0)
 
-    if not args['no_load'] and not args['system'] == "mongodb":
+    if not args['no_load'] and args['system'] == "nestcollections":
        if load_mode == constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]:
             logging.info("Need to specify the type of load")
             sys.exit(0)
@@ -482,7 +491,7 @@ if __name__ == '__main__':
     val = -1
     if args['no_execute']:
          val = 0
-         driver = driverClass(args['ddl'], val, "L", schema, preparedTransactionQueries, 0, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, kv_timeout, bulkload_batch_size)
+         driver = driverClass(args['ddl'], val, "L", schema, preparedTransactionQueries, 0, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, load_format, kv_timeout, bulkload_batch_size)
     else:
         TAFlag = "T"
         if numTClients == 0:
@@ -531,7 +540,7 @@ if __name__ == '__main__':
             l.execute()
             driver.loadFinish()
         else:
-            startLoading(driverClass, schema, scaleParameters, args, config, customerExtraFields, ordersExtraFields, itemExtraFields, maxExtraFields, load_mode, kv_timeout, bulkload_batch_size, datagenSeed)
+            startLoading(driverClass, schema, scaleParameters, args, config, customerExtraFields, ordersExtraFields, itemExtraFields, maxExtraFields, load_mode, load_format, kv_timeout, bulkload_batch_size, datagenSeed)
         load_time = time.time() - load_start
     ## IF
 
@@ -557,4 +566,3 @@ if __name__ == '__main__':
     ## IF
 
 ## MAIN
-
