@@ -366,6 +366,7 @@ class NestcollectionsDriver(AbstractDriver):
                  ordersExtraFields=constants.CH2_ORDERS_EXTRA_FIELDS["NOT_SET"],
                  itemExtraFields=constants.CH2_ITEM_EXTRA_FIELDS["NOT_SET"],
                  load_mode=constants.CH2_DRIVER_LOAD_MODE["NOT_SET"],
+                 load_format=constants.CH2_DRIVER_LOAD_FORMAT["JSON"],
                  kv_timeout=constants.CH2_DRIVER_KV_TIMEOUT,
                  bulkload_batch_size=constants.CH2_DRIVER_BULKLOAD_BATCH_SIZE):
         global globpool
@@ -523,7 +524,7 @@ class NestcollectionsDriver(AbstractDriver):
             return
 
         logging.debug("Loading %d tuples for tableName %s" % (len(tuples), tableName))
-        assert tableName in constants.CH2_TABLE_COLUMNS, "Unexpected table %s" % tableName
+        assert tableName in constants.ALL_TABLES, "Unexpected table %s" % tableName
 
         if (self.load_mode == constants.CH2_DRIVER_LOAD_MODE["DATASVC_BULKLOAD"] or
             self.load_mode == constants.CH2_DRIVER_LOAD_MODE["DATASVC_LOAD"]):
@@ -1105,6 +1106,3 @@ class NestcollectionsDriver(AbstractDriver):
                 ]
         return qry_times
 ## CLASS
-
-
-
