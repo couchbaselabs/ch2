@@ -66,6 +66,8 @@ class AbstractDriver(object):
     def getOneDoc(self, tableName, fieldValues, generateKey=False):
         if self.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
             return self.getOneCH2Doc(tableName, fieldValues, generateKey)
+        elif self.schema == constants.CH2_DRIVER_SCHEMA["CH2PPF"]:
+            return self.getOneCH2PPFlatDoc(tableName, fieldValues, generateKey)
         else:
             return self.getOneCH2PPDoc(tableName, fieldValues, generateKey)
 
@@ -80,7 +82,7 @@ class AbstractDriver(object):
             if tableName == constants.TABLENAME_ORDERS and columns[l] == "o_orderline":
                 v1 = []
                 for olv in v:
-                    v1.append(self.genNestedDoc(olv, constants.TABLENAME_ORDERLINE))
+                    v1.append(self.genDoc(olv, constants.TABLENAME_ORDERLINE))
             elif (tableName == constants.TABLENAME_ITEM and columns[l] == "i_categories" or
                   tableName == constants.TABLENAME_CUSTOMER and columns[l] == "c_item_categories"):
                 continue
@@ -115,20 +117,20 @@ class AbstractDriver(object):
             elif tableName == constants.TABLENAME_ORDERS and columns[l] == "o_orderline":
                 v1 = []
                 for olv in v:
-                    v1.append(self.genNestedDoc(olv, constants.TABLENAME_ORDERLINE))
+                    v1.append(self.genDoc(olv, constants.TABLENAME_ORDERLINE))
             elif (self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"] and
                   (tableName == constants.TABLENAME_ITEM and columns[l] == "i_categories" or
                    tableName == constants.TABLENAME_CUSTOMER and columns[l] == "c_item_categories")):
                 continue
             elif tableName == constants.TABLENAME_WAREHOUSE and columns[l] == "w_address":
-                v1 = self.genNestedDoc(v, constants.TABLENAME_WAREHOUSE_ADDRESS)
+                v1 = self.genDoc(v, constants.TABLENAME_WAREHOUSE_ADDRESS)
             elif tableName == constants.TABLENAME_DISTRICT and columns[l] == "d_address":
-                v1 = self.genNestedDoc(v, constants.TABLENAME_DISTRICT_ADDRESS)
+                v1 = self.genDoc(v, constants.TABLENAME_DISTRICT_ADDRESS)
             elif tableName == constants.TABLENAME_SUPPLIER and columns[l] == "su_address":
-                v1 = self.genNestedDoc(v, constants.TABLENAME_SUPPLIER_ADDRESS)
+                v1 = self.genDoc(v, constants.TABLENAME_SUPPLIER_ADDRESS)
             elif tableName == constants.TABLENAME_CUSTOMER:
                 if columns[l] == "c_name":
-                    v1 = self.genNestedDoc(v, constants.TABLENAME_CUSTOMER_NAME)
+                    v1 = self.genDoc(v, constants.TABLENAME_CUSTOMER_NAME)
                 elif columns[l] == "c_extra":
                     for i in range(0, self.customerExtraFields):
                         val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
@@ -136,13 +138,13 @@ class AbstractDriver(object):
                 elif columns[l] == "c_addresses":
                     v1 = []
                     for clv in v:
-                        v1.append(self.genNestedDoc(clv, constants.TABLENAME_CUSTOMER_ADDRESSES))
+                        v1.append(self.genDoc(clv, constants.TABLENAME_CUSTOMER_ADDRESSES))
                         if self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"]:
                             break # Load only one customer address for CH2P
                 elif columns[l] == "c_phones":
                     v1 = []
                     for clv in v:
-                        v1.append(self.genNestedDoc(clv, constants.TABLENAME_CUSTOMER_PHONES))
+                        v1.append(self.genDoc(clv, constants.TABLENAME_CUSTOMER_PHONES))
                         if self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"]:
                             break # Load only one customer phone for CH2P
             elif tableName == constants.TABLENAME_ORDERS and columns[l] == "o_extra":
@@ -156,17 +158,73 @@ class AbstractDriver(object):
             val[columns[l]] = v1
         return key, val
 
-    def genNestedDoc(self, fieldValues, tableName):
+    def getOneCH2PPFlatDoc(self, tableName, fieldValues, generateKey):
+        columns = constants.CH2PP_TABLE_COLUMNS[tableName]
+        key = ""
+        if generateKey:
+            key = ".".join(str(fieldValues[k]) for k in constants.KEYNAMES[tableName])
+        val = {}
+        for l, v in enumerate(fieldValues):
+            v1 = fieldValues[l]
+            if isinstance(v1,(datetime)):
+                v1 = str(v1)
+            elif tableName == constants.TABLENAME_ORDERS and columns[l] == "o_orderline":
+                continue
+            elif (self.schema == constants.CH2_DRIVER_SCHEMA["CH2P"] and
+                  (tableName == constants.TABLENAME_ITEM and columns[l] == "i_categories" or
+                   tableName == constants.TABLENAME_CUSTOMER and columns[l] == "c_item_categories")):
+                continue
+            elif tableName == constants.TABLENAME_WAREHOUSE and columns[l] == "w_address":
+                self.addFlatFields(v1, constants.TABLENAME_WAREHOUSE_ADDRESS, val)
+                continue
+            elif tableName == constants.TABLENAME_DISTRICT and columns[l] == "d_address":
+                self.addFlatFields(v1, constants.TABLENAME_DISTRICT_ADDRESS, val)
+                continue
+            elif tableName == constants.TABLENAME_SUPPLIER and columns[l] == "su_address":
+                self.addFlatFields(v1, constants.TABLENAME_SUPPLIER_ADDRESS, val)
+                continue
+            elif tableName == constants.TABLENAME_CUSTOMER:
+                if columns[l] == "c_name":
+                    self.addFlatFields(v1, constants.TABLENAME_CUSTOMER_NAME, val)
+                    continue
+                elif columns[l] == "c_extra":
+                    for i in range(0, self.customerExtraFields):
+                        val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                    continue
+                elif columns[l] == "c_addresses" or columns[l] == "c_phones" or columns[l] == "c_item_categories":
+                    continue
+            elif tableName == constants.TABLENAME_ORDERS and columns[l] == "o_extra":
+                for i in range(0, self.ordersExtraFields):
+                    val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                continue
+            elif tableName == constants.TABLENAME_ITEM and columns[l] == "i_extra":
+                for i in range(0, self.itemExtraFields):
+                    val[columns[l]+"_"+str(format(i+1, "03d"))] = v1[i]
+                continue
+            elif tableName == constants.TABLENAME_STOCK and columns[l] == "s_dists":
+                for i in range(0, 10):
+                    val[columns[l][:-1]+"_"+str(format(i+1, "02d"))] = v1[i]
+                continue
+            elif tableName == constants.TABLENAME_ITEM and columns[l] == "i_categories":
+                  continue
+            val[columns[l]] = v1
+        return key, val
+
+    def genDoc(self, fieldValues, tableName, rval=None):
         if self.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
             columns = constants.CH2_TABLE_COLUMNS[tableName]
         else:
             columns = constants.CH2PP_TABLE_COLUMNS[tableName]
-        rval = {}
+        if rval == None:
+            rval = {}
         for l, v in enumerate(fieldValues):
             if isinstance(v,(datetime)):
                 v = str(v)
             rval[columns[l]] = v
         return rval
+
+    def addFlatFields(self, v1, tableName, rval):
+        return self.genDoc(v1, tableName, rval)
 
     def loadStart(self):
         """Optional callback to indicate to the driver that the data loading phase is about to begin."""
@@ -273,4 +331,3 @@ class AbstractDriver(object):
         """
         raise NotImplementedError("%s does not implement doStockLevel" % (self.driver_name))
 ## CLASS
-
