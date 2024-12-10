@@ -164,10 +164,15 @@ CH2_DRIVER_LOAD_MODE = {
     "DATASVC_LOAD":1,
     "QRYSVC_LOAD":2
 }
+CH2_DRIVER_LOAD_FORMAT = {
+    "JSON":0,
+    "CSV":1
+}
 CH2_DRIVER_SCHEMA = {
     "CH2":"ch2",
     "CH2P":"ch2p",
-    "CH2PP":"ch2pp"
+    "CH2PP":"ch2pp",
+    "CH2PPF":"ch2ppf"
 }
 CH2_DRIVER_ANALYTICAL_QUERIES = {
     "HAND_OPTIMIZED_QUERIES":0,
@@ -180,18 +185,21 @@ CH2_CUSTOMER_EXTRA_FIELDS = {
     CH2_DRIVER_SCHEMA["CH2"]:0,
     CH2_DRIVER_SCHEMA["CH2P"]:0,
     CH2_DRIVER_SCHEMA["CH2PP"]:128,
+    CH2_DRIVER_SCHEMA["CH2PPF"]:128,
 }
 CH2_ORDERS_EXTRA_FIELDS = {
     "NOT_SET":-1,
     CH2_DRIVER_SCHEMA["CH2"]:0,
     CH2_DRIVER_SCHEMA["CH2P"]:0,
     CH2_DRIVER_SCHEMA["CH2PP"]:128,
+    CH2_DRIVER_SCHEMA["CH2PPF"]:128,
 }
 CH2_ITEM_EXTRA_FIELDS = {
     "NOT_SET":-1,
     CH2_DRIVER_SCHEMA["CH2"]:0,
     CH2_DRIVER_SCHEMA["CH2P"]:0,
     CH2_DRIVER_SCHEMA["CH2PP"]:128,
+    CH2_DRIVER_SCHEMA["CH2PPF"]:128,
 }
 
 CH2_DATAGEN_SEED_NOT_SET = -1
@@ -201,47 +209,62 @@ CH2_DRIVER_BULKLOAD_BATCH_SIZE = 1024 * 256 # 256K
 
 # Table Names
 TABLENAME_ITEM       = "item"
+TABLENAME_ITEM_CATEGORIES_FLAT = "item_categories"
 TABLENAME_WAREHOUSE  = "warehouse"
 TABLENAME_DISTRICT   = "district"
 TABLENAME_CUSTOMER   = "customer"
 TABLENAME_STOCK      = "stock"
 TABLENAME_ORDERS     = "orders"
 TABLENAME_NEWORDER   = "neworder"
-TABLENAME_ORDERLINE  = "orderline"
+TABLENAME_ORDERLINE  = "orderline_nested"
+TABLENAME_ORDERLINE_FLAT  = "orders_orderline"
 TABLENAME_HISTORY    = "history"
 TABLENAME_SUPPLIER   = "supplier"
 TABLENAME_NATION     = "nation"
 TABLENAME_REGION     = "region"
-TABLENAME_WAREHOUSE_ADDRESS  = "warehouse_address"
-TABLENAME_DISTRICT_ADDRESS  = "district_address"
-TABLENAME_CUSTOMER_NAME  = "customer_name"
-TABLENAME_CUSTOMER_ADDRESSES  = "customer_addresses"
-TABLENAME_CUSTOMER_PHONES  = "customer_phones"
-TABLENAME_SUPPLIER_ADDRESS  = "supplier_address"
+TABLENAME_WAREHOUSE_ADDRESS  = "warehouse_address_nested"
+TABLENAME_DISTRICT_ADDRESS  = "district_address_nested"
+TABLENAME_CUSTOMER_NAME  = "customer_name_nested"
+TABLENAME_CUSTOMER_ADDRESSES  = "customer_addresses_nested"
+TABLENAME_CUSTOMER_ADDRESSES_FLAT  = "customer_addresses"
+TABLENAME_CUSTOMER_PHONES  = "customer_phones_nested"
+TABLENAME_CUSTOMER_PHONES_FLAT  = "customer_phones"
+TABLENAME_CUSTOMER_ITEM_CATEGORIES_FLAT = "customer_item_categories"
+TABLENAME_SUPPLIER_ADDRESS  = "supplier_address_nested"
 
 COLLECTIONS_DICT = {
     TABLENAME_ITEM:"item",
+    TABLENAME_ITEM_CATEGORIES_FLAT:"item_categories",
     TABLENAME_WAREHOUSE:"warehouse",
     TABLENAME_DISTRICT:"district",
     TABLENAME_CUSTOMER:"customer",
     TABLENAME_STOCK:"stock",
     TABLENAME_ORDERS:"orders",
     TABLENAME_NEWORDER:"neworder",
-    TABLENAME_ORDERLINE:"orderline",
+    TABLENAME_ORDERLINE:"orderline_nested",
+    TABLENAME_ORDERLINE_FLAT:"orders_orderline",
     TABLENAME_HISTORY:"history",
     TABLENAME_SUPPLIER:"supplier",
     TABLENAME_NATION:"nation",
-    TABLENAME_REGION:"region"}
+    TABLENAME_REGION:"region",
+    TABLENAME_CUSTOMER_ADDRESSES_FLAT:"customer_addresses",
+    TABLENAME_CUSTOMER_PHONES_FLAT:"customer_phones",
+    TABLENAME_CUSTOMER_ITEM_CATEGORIES_FLAT:"customer_item_categories"}
 
 ALL_TABLES = [
     TABLENAME_ITEM,
+    TABLENAME_ITEM_CATEGORIES_FLAT,
     TABLENAME_WAREHOUSE,
     TABLENAME_DISTRICT,
     TABLENAME_CUSTOMER,
+    TABLENAME_CUSTOMER_ADDRESSES_FLAT,
+    TABLENAME_CUSTOMER_PHONES_FLAT,
+    TABLENAME_CUSTOMER_ITEM_CATEGORIES_FLAT,
     TABLENAME_STOCK,
     TABLENAME_ORDERS,
-    TABLENAME_NEWORDER,
     TABLENAME_ORDERLINE,
+    TABLENAME_ORDERLINE_FLAT,
+    TABLENAME_NEWORDER,
     TABLENAME_HISTORY,
     TABLENAME_SUPPLIER,
     TABLENAME_NATION,
@@ -319,6 +342,7 @@ REGIONS = ["Africa", "America", "Asia", "Europe", "Middle East"]
 
 KEYNAMES = {
         TABLENAME_ITEM:         [0],  # INTEGER
+        TABLENAME_ITEM_CATEGORIES_FLAT: [0, 1],
         TABLENAME_WAREHOUSE:    [0],  # INTEGER
         TABLENAME_DISTRICT:     [1, 0],  # INTEGER
         TABLENAME_CUSTOMER:     [2, 1, 0], # INTEGER
@@ -326,10 +350,14 @@ KEYNAMES = {
         TABLENAME_ORDERS:       [3, 2, 0], # INTEGER
         TABLENAME_NEWORDER:     [2, 1, 0], # INTEGER
         TABLENAME_ORDERLINE:    [2, 1, 0, 3], # INTEGER
-        TABLENAME_HISTORY:      [2, 1, 0],  # INTEGER
+        TABLENAME_ORDERLINE_FLAT: [2, 1, 0, 3], # INTEGER
+        TABLENAME_HISTORY:      [2, 1, 0], # INTEGER
         TABLENAME_SUPPLIER:     [0],  # INTEGER
         TABLENAME_NATION:       [0],  # INTEGER
         TABLENAME_REGION:       [0],  # INTEGER
+        TABLENAME_CUSTOMER_ADDRESSES_FLAT: [2, 1, 0, 3],
+        TABLENAME_CUSTOMER_PHONES_FLAT: [2, 1, 0, 4],
+        TABLENAME_CUSTOMER_ITEM_CATEGORIES_FLAT: [2, 1, 0, 3],
 }
 
 CH2_TABLE_COLUMNS = {
@@ -481,6 +509,10 @@ CH2PP_TABLE_COLUMNS = {
         "i_data", # VARCHAR
         "i_im_id", # INTEGER
     ],
+    TABLENAME_ITEM_CATEGORIES_FLAT:    [
+        "i_id", # INTEGER
+        "i_category", # VARCHAR
+    ],
     TABLENAME_WAREHOUSE: [
         "w_id", # SMALLINT
         "w_ytd", # FLOAT
@@ -555,6 +587,18 @@ CH2PP_TABLE_COLUMNS = {
         "ol_amount", # FLOAT
         "ol_dist_info", # VARCHAR
     ],
+    TABLENAME_ORDERLINE_FLAT: [
+        "o_id", # INTEGER
+        "o_d_id", # TINYINT
+        "o_w_id", # SMALLINT
+        "ol_number", # INTEGER
+        "ol_i_id", # INTEGER
+        "ol_supply_w_id", # SMALLINT
+        "ol_delivery_d", # TIMESTAMP
+        "ol_quantity", # INTEGER
+        "ol_amount", # FLOAT
+        "ol_dist_info", # VARCHAR
+    ],
     TABLENAME_HISTORY:    [
         "h_c_id", # INTEGER
         "h_c_d_id", # TINYINT
@@ -612,9 +656,33 @@ CH2PP_TABLE_COLUMNS = {
         "c_state", # VARCHAR
         "c_zip", # VARCHAR
     ],
+    TABLENAME_CUSTOMER_ADDRESSES_FLAT:    [
+        "c_id", # INTEGER
+        "c_d_id", # TINYINT
+        "c_w_id", # SMALLINT
+        "c_address_kind", # VARCHAR
+        "c_street_1", # VARCHAR
+        "c_street_2", # VARCHAR
+        "c_city", # VARCHAR
+        "c_state", # VARCHAR
+        "c_zip", # VARCHAR
+    ],
     TABLENAME_CUSTOMER_PHONES:    [
         "c_phone_kind", # VARCHAR
         "c_phone_number", # VARCHAR
+    ],
+    TABLENAME_CUSTOMER_PHONES_FLAT:    [
+        "c_id", # INTEGER
+        "c_d_id", # TINYINT
+        "c_w_id", # SMALLINT
+        "c_phone_kind", # VARCHAR
+        "c_phone_number", # VARCHAR
+    ],
+    TABLENAME_CUSTOMER_ITEM_CATEGORIES_FLAT:    [
+        "c_id", # INTEGER
+        "c_d_id", # TINYINT
+        "c_w_id", # SMALLINT
+        "c_item_category", # VARCHAR
     ],
     TABLENAME_SUPPLIER_ADDRESS:    [
         "su_street_1", # VARCHAR
@@ -629,6 +697,10 @@ TABLE_INDEXES = {
     TABLENAME_ITEM: [
         "i_id",
     ],
+    TABLENAME_ITEM_CATEGORIES_FLAT: [
+        "i_id",
+        "i_category",
+    ],
     TABLENAME_WAREHOUSE: [
         "w_id",
     ],
@@ -640,6 +712,24 @@ TABLE_INDEXES = {
         "c_id",
         "c_d_id",
         "c_w_id",
+    ],
+    TABLENAME_CUSTOMER_ADDRESSES_FLAT:   [
+        "c_id",
+        "c_d_id",
+        "c_w_id",
+        "c_address_kind",
+    ],
+    TABLENAME_CUSTOMER_PHONES_FLAT:   [
+        "c_id",
+        "c_d_id",
+        "c_w_id",
+        "c_phone_number",
+    ],
+    TABLENAME_CUSTOMER_ITEM_CATEGORIES_FLAT:   [
+        "c_id",
+        "c_d_id",
+        "c_w_id",
+        "c_item_category",
     ],
     TABLENAME_STOCK:      [
         "s_i_id",
@@ -660,6 +750,12 @@ TABLE_INDEXES = {
         "ol_o_id",
         "ol_d_id",
         "ol_w_id",
+    ],
+    TABLENAME_ORDERLINE_FLAT: [
+        "ol_o_id",
+        "ol_d_id",
+        "ol_w_id",
+        "ol_number",
     ],
     TABLENAME_SUPPLIER:    [
         "su_suppkey",
