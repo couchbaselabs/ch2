@@ -45,6 +45,7 @@ class Loader:
     
     def __init__(self, driver, scaleParameters, w_ids, needLoadItems, maxExtraFields, datagenSeed):
         self.driver = driver
+        self.genFlatSchema = self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2PPF"]
         self.scaleParameters = scaleParameters
         self.w_ids = w_ids
         self.needLoadItems = needLoadItems
@@ -93,20 +94,29 @@ class Loader:
         originalRows = self.randomGen.selectUniqueIds(self.scaleParameters.items // 10, 1, self.scaleParameters.items)
 
         ## Load all of the items
-        tuples = [ ]
+        item_tuples = [ ]
         total_tuples = 0
+        i_categories_tuples = [ ]
         for i in range(1, self.scaleParameters.items+1):
             original = (i in originalRows)
-            tuples.append(self.generateItem(i, original))
+            i_tuple, i_cat_tuples = self.generateItem(i, original)
+            item_tuples.append(i_tuple)
             total_tuples += 1
-            if len(tuples) == self.batch_size:
+            if self.genFlatSchema:
+                i_categories_tuples += i_cat_tuples
+            if len(item_tuples) == self.batch_size:
                 logging.debug("LOAD - %s: %5d / %d" % (constants.TABLENAME_ITEM, total_tuples, self.scaleParameters.items))
-                self.driver.loadTuples(constants.TABLENAME_ITEM, tuples)
-                tuples = [ ]
+                self.driver.loadTuples(constants.TABLENAME_ITEM, item_tuples)
+                if self.genFlatSchema:
+                    self.driver.loadTuples(constants.TABLENAME_ITEM_CATEGORIES_FLAT, i_categories_tuples)
+                item_tuples = [ ]
+                i_categories_tuples = [ ]
         ## FOR
-        if len(tuples) > 0:
+        if len(item_tuples) > 0:
             logging.debug("LOAD - %s: %5d / %d" % (constants.TABLENAME_ITEM, total_tuples, self.scaleParameters.items))
-            self.driver.loadTuples(constants.TABLENAME_ITEM, tuples)
+            self.driver.loadTuples(constants.TABLENAME_ITEM, item_tuples)
+            if self.genFlatSchema:
+                self.driver.loadTuples(constants.TABLENAME_ITEM_CATEGORIES_FLAT, i_categories_tuples)
     ## DEF
 
     ## ==============================================
@@ -124,8 +134,6 @@ class Loader:
         endDate = self.computeEndDate(runDate)     # runDate - 1 day
         startOrderDate = startDate
         endOrderDate = endDate - timedelta(days=151)
-        startOrderLineDayRange = 2
-        endOrderLineDayRange = 151
         cum_h_amount_per_warehouse = 0
         #w_ytd
         w_ytd_idx = 1
@@ -133,8 +141,6 @@ class Loader:
         d_ytd_idx = 2
         ## h_amount
         h_amount_idx = 6
-        #ol_amount
-        ol_amount_idx = 5
         # use c_since as orderDate
         if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
             c_balance_idx, c_ytd_payment_idx, c_since_idx = 9, 10, 20
@@ -152,8 +158,13 @@ class Loader:
             d_next_o_id = self.scaleParameters.customersPerDistrict + 1
             d_tuples = self.generateDistrict(w_id, d_id, d_next_o_id)
             c_tuples = [ ]
+            c_addresses_tuples = [ ]
+            c_phones_tuples = [ ]
+            c_categories_tuples = [ ]
+            o_orderline_tuples = [ ]
             h_tuples = [ ]
-            
+            o_tuples = [ ]
+            total_ol_amount = 0
             ## Select 10% of the customers to have bad credit
             selectedRows = self.randomGen.selectUniqueIds(self.scaleParameters.customersPerDistrict // 10, 1, self.scaleParameters.customersPerDistrict)
             
@@ -165,7 +176,12 @@ class Loader:
             for c_id in range(1, self.scaleParameters.customersPerDistrict+1):
                 badCredit = (c_id in selectedRows)
                 orderDate = self.computeRandomRangeDate(startOrderDate, endOrderDate)
-                c_tuples.append(self.generateCustomer(w_id, d_id, c_id, orderDate, badCredit, True))
+                c_tuple, ca_tuples, cp_tuples, cc_tuples = self.generateCustomer(w_id, d_id, c_id, orderDate, badCredit)
+                c_tuples.append(c_tuple)
+                if self.genFlatSchema:
+                    c_addresses_tuples += ca_tuples
+                    c_phones_tuples += cp_tuples
+                    c_categories_tuples += cc_tuples
                 h_tuples.append(self.generateHistory(w_id, d_id, c_id, orderDate))
                 cIdPermutation.append(c_id)
                 cum_h_amount_per_district += h_tuples[c_id-1][h_amount_idx]
@@ -176,9 +192,7 @@ class Loader:
             assert cIdPermutation[self.scaleParameters.customersPerDistrict - 1] == self.scaleParameters.customersPerDistrict
             self.randomGen.rng.shuffle(cIdPermutation)
             
-            o_tuples = [ ]
             no_tuples = [ ]
-            
             for o_id in range(1, self.scaleParameters.customersPerDistrict+1):
                 o_ol_cnt = self.randomGen.number(constants.MIN_OL_CNT, constants.MAX_OL_CNT)
                 
@@ -186,22 +200,12 @@ class Loader:
                 newOrder = ((self.scaleParameters.customersPerDistrict - self.scaleParameters.newOrdersPerDistrict) < o_id)
                 orderDate = c_tuples[cIdPermutation[o_id-1]-1][c_since_idx]
                 orderTime = self.computeRandomRangeTime(orderDate)
-                o_tuple = self.generateOrder(w_id, d_id, o_id, cIdPermutation[o_id - 1], o_ol_cnt, orderTime, newOrder)
-                total_ol_amount = 0
-                ## Generate each OrderLine for the order
-                ol_tuples = [ ]            
-                for ol_number in range(0, o_ol_cnt):
-                    startOrderLineDate = orderDate + timedelta(days=startOrderLineDayRange)
-                    endOrderLineDate = orderDate + timedelta(days=endOrderLineDayRange)
-                    orderLineDate = self.computeRandomRangeDate(startOrderLineDate, endOrderLineDate)
-                    orderLineTime = self.computeRandomRangeTime(orderLineDate)
-                    ol_tuple = self.generateOrderLine(w_id, d_id, o_id, ol_number, self.scaleParameters.items, orderLineTime, newOrder)
-                    ol_tuples.append(ol_tuple)
-                    total_ol_amount += ol_tuple[ol_amount_idx]
-                ## FOR
-                o_tuple.append(ol_tuples)
+                o_tuple, ol_tuples, t_ol_amount = self.generateOrder(w_id, d_id, o_id, cIdPermutation[o_id - 1], o_ol_cnt, orderDate, orderTime, newOrder)
+                if self.genFlatSchema:
+                    o_orderline_tuples += ol_tuples
                 o_tuples.append(o_tuple)
                 h_amount = h_tuples[cIdPermutation[o_id-1]-1][h_amount_idx]
+                total_ol_amount += t_ol_amount
                 if not newOrder:
                     c_tuples[cIdPermutation[o_id-1]-1][c_balance_idx] = total_ol_amount - h_amount
                     c_tuples[cIdPermutation[o_id-1]-1][c_ytd_payment_idx] = h_amount
@@ -211,7 +215,12 @@ class Loader:
             self.driver.loadTuples(constants.TABLENAME_DISTRICT, d_tuples)
             self.driver.loadTuples(constants.TABLENAME_CUSTOMER, c_tuples)
             self.driver.loadTuples(constants.TABLENAME_ORDERS, o_tuples)
-#            self.driver.loadTuples(constants.TABLENAME_ORDERLINE, ol_tuples)
+            if self.genFlatSchema:
+                self.driver.loadTuples(constants.TABLENAME_CUSTOMER_ADDRESSES_FLAT, c_addresses_tuples)
+                self.driver.loadTuples(constants.TABLENAME_CUSTOMER_PHONES_FLAT, c_phones_tuples)
+                self.driver.loadTuples(constants.TABLENAME_CUSTOMER_ITEM_CATEGORIES_FLAT, c_categories_tuples)
+                self.driver.loadTuples(constants.TABLENAME_ORDERLINE_FLAT, o_orderline_tuples)
+
             self.driver.loadTuples(constants.TABLENAME_NEWORDER, no_tuples)
             self.driver.loadTuples(constants.TABLENAME_HISTORY, h_tuples)
 #            self.driver.loadFinishDistrict(w_id, d_id)
@@ -318,9 +327,13 @@ class Loader:
         for i in i_category_num:
             i_categories.append("category_" + str(format(i, "03d")))
         i_tuple.append(i_categories)
-
         i_tuple += [i_data, i_im_id]
-        return i_tuple
+        i_categories_flat = []
+        if self.genFlatSchema:
+            for icat in i_categories:
+                i_categories_flat.append([id, icat])
+
+        return i_tuple, i_categories_flat
     ## DEF
 
     ## ==============================================
@@ -358,7 +371,7 @@ class Loader:
     ## ==============================================
     ## generateCustomer
     ## ==============================================
-    def generateCustomer(self, c_w_id, c_d_id, c_id, sinceDate, badCredit, doesReplicateName):
+    def generateCustomer(self, c_w_id, c_d_id, c_id, sinceDate, badCredit):
         c_discount = self.randomGen.fixedPoint(constants.DISCOUNT_DECIMALS, constants.MIN_DISCOUNT, constants.MAX_DISCOUNT)
         c_credit = constants.BAD_CREDIT if badCredit else constants.GOOD_CREDIT
         c_tuple = [ c_id, c_d_id, c_w_id, c_discount, c_credit ]
@@ -376,14 +389,14 @@ class Loader:
 
         c_tuple.append(self.generateExtraFields(self.maxExtraFields))
 
-        c_addresses = self.generateCustomerAddresses()
+        c_addresses, c_addresses_flat  = self.generateCustomerAddresses(c_id, c_d_id, c_w_id)
         if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
             c_address = c_addresses[0][1:]
             c_tuple += c_address
         else:
             c_tuple.append(c_addresses)
 
-        c_phones = self.generateCustomerPhones()
+        c_phones, c_phones_flat = self.generateCustomerPhones(c_id, c_d_id, c_w_id)
         if self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2"]:
             c_phone = c_phones[0][1:]
             c_tuple += c_phone
@@ -393,29 +406,48 @@ class Loader:
         c_since = sinceDate
         c_tuple = c_tuple + [c_since]
 
-        c_category_num = self.randomGen.nprng.choice(range(1, 128), size=self.randomGen.nprng.integers(0,15), replace=False)
-        c_categories = []
-        for c in c_category_num:
-            c_categories.append("category_" + str(format(c, "03d")))
+        c_categories, c_categories_flat = self.generateCustomerCategories(c_id, c_d_id, c_w_id)
+
         c_tuple.append(c_categories)
 
         c_data = self.randomGen.astring(constants.MIN_C_DATA, constants.MAX_C_DATA)
         c_tuple.append(c_data)
 
-        return c_tuple
+        return c_tuple, c_addresses_flat, c_phones_flat, c_categories_flat
     ## DEF
 
     ## ==============================================
     ## generateOrder
     ## ==============================================
-    def generateOrder(self, o_w_id, o_d_id, o_id, o_c_id, o_ol_cnt, orderTime, newOrder):
+    def generateOrder(self, o_w_id, o_d_id, o_id, o_c_id, o_ol_cnt, orderDate, orderTime, newOrder):
         """Returns the generated o_ol_cnt value."""
         o_entry_d = orderTime
         o_carrier_id = constants.NULL_CARRIER_ID if newOrder else self.randomGen.number(constants.MIN_CARRIER_ID, constants.MAX_CARRIER_ID)
         o_all_local = constants.INITIAL_ALL_LOCAL
         o_tuple = [ o_id, o_c_id, o_d_id, o_w_id, o_carrier_id, o_ol_cnt, o_all_local, o_entry_d ]
         o_tuple.append(self.generateExtraFields(self.maxExtraFields))
-        return o_tuple
+
+        startOrderLineDayRange = 2
+        endOrderLineDayRange = 151
+        startOrderLineDate = orderDate + timedelta(days=startOrderLineDayRange)
+        endOrderLineDate = orderDate + timedelta(days=endOrderLineDayRange)
+        ol_amount_idx = 5
+        ol_tuples = [ ]
+        total_ol_amount = 0
+        for ol_number in range(0, o_ol_cnt):
+            orderLineDate = self.computeRandomRangeDate(startOrderLineDate, endOrderLineDate)
+            orderLineTime = self.computeRandomRangeTime(orderLineDate)
+            ol_tuple = self.generateOrderLine(o_w_id, o_d_id, o_id, ol_number, self.scaleParameters.items, orderLineTime, newOrder)
+            ol_tuples.append(ol_tuple)
+            total_ol_amount += ol_tuple[ol_amount_idx]
+        ## FOR
+
+        o_tuple.append(ol_tuples)
+        ol_tuples_flat = []
+        if self.genFlatSchema:
+            for ol in ol_tuples:
+                ol_tuples_flat.append([o_id, o_d_id, o_w_id] + ol)
+        return o_tuple, ol_tuples_flat, total_ol_amount
     ## DEF
 
     ## ==============================================
@@ -550,33 +582,57 @@ class Loader:
     ## ==============================================
     ## generateCustomerAddresses
     ## ==============================================
-    def generateCustomerAddresses(self):
+    def generateCustomerAddresses(self, c_id, c_d_id, c_w_id):
         """
             Returns customer addresses
         """
+        c_addresses_flat = []
         c_addresses = [["shipping"] + self.generateStreetAddress()]
         c_other_addr_type = ["home", "work", "billing"]
         c_other_addr = self.randomGen.nprng.choice(c_other_addr_type, size=self.randomGen.nprng.integers(0, 4), replace=False)
         for coa in c_other_addr:
             c_addresses.append([coa] + self.generateStreetAddress())
-
-        return c_addresses
+        if self.genFlatSchema:
+            for ca in c_addresses:
+                c_addresses_flat.append([c_id, c_d_id, c_w_id] + ca)
+        return c_addresses, c_addresses_flat
     ## DEF
 
     ## ==============================================
     ## generateCustomerPhones
     ## ==============================================
-    def generateCustomerPhones(self):
+    def generateCustomerPhones(self, c_id, c_d_id, c_w_id):
         """
             Returns customer phones
         """
+        c_phones_flat = []
         c_phones = [["contact"] + [self.randomGen.nstring(constants.PHONE, constants.PHONE)]]
         c_other_phone_type = ["home", "work", "mobile"]
         c_other_phone = self.randomGen.nprng.choice(c_other_phone_type, size=self.randomGen.nprng.integers(0, 4), replace=False)
         for cop in c_other_phone:
             c_phones.append([cop] + [self.randomGen.nstring(constants.PHONE, constants.PHONE)])
-        return c_phones
+        if self.genFlatSchema:
+            for cp in c_phones:
+                c_phones_flat.append([c_id, c_d_id, c_w_id] + cp)
+        return c_phones, c_phones_flat
     ## DEF
+
+    ## ==============================================
+    ## generateCustomerCategories
+    ## ==============================================
+    def generateCustomerCategories(self, c_id, c_d_id, c_w_id):
+        """
+            Returns customer categories
+        """
+        c_categories_flat = []
+        c_category_num = self.randomGen.nprng.choice(range(1, 128), size=self.randomGen.nprng.integers(0,15), replace=False)
+        c_categories = []
+        for c in c_category_num:
+            c_categories.append("category_" + str(format(c, "03d")))
+        if self.genFlatSchema:
+            for c in c_categories:
+                c_categories_flat.append([c_id, c_d_id, c_w_id, c])
+        return c_categories, c_categories_flat
 
     ## ==============================================
     ## generateExtraFields
@@ -670,8 +726,8 @@ class Loader:
     ## DEF
 
     def computeRandomRangeTime(self, dateObj):
-         return dateObj.strftime("%Y-%m-%d %H:%M:%S")
+        return dateObj.strftime("%Y-%m-%d %H:%M:%S")
+
     ## DEF
 
 ## CLASS
-
