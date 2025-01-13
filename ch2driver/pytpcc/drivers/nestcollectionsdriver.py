@@ -1041,6 +1041,14 @@ class NestcollectionsDriver(AbstractDriver):
 
     def runCH2Queries(self, duration, endBenchmarkTime, queryIterNum):
         qry_times = {}
+
+        try:
+            request_params = json.loads(os.environ.get("ACLIENT_REQUEST_PARAMS", "{}"))
+        except json.JSONDecodeError:
+            logging.warning("Failed to decode JSON from environment variable ACLIENT_REQUEST_PARAMS")
+            request_params = {}
+        logging.info("Extra request params: %s" % json.dumps(request_params))
+
         if self.TAFlag == "A":
             # ch2_queries_perm = list(constants.CH2_QUERIES.keys())
             # Pick a good seed based on client_id and query iteration number
@@ -1072,7 +1080,7 @@ class NestcollectionsDriver(AbstractDriver):
             for qry in ch2_queries_perm:
                 query_id_str = "AClient %d:Loop %d:%s:" % (self.client_id + 1, queryIterNum + 1, qry)
                 query = ch2_queries[qry]
-                stmt = json.loads('{"statement" : "' + str(query) + '"}')
+                stmt = {"statement": query} | request_params
 
                 start = time.time()
                 startTime = time.strftime("%H:%M:%S", time.localtime(start))
@@ -1095,6 +1103,10 @@ class NestcollectionsDriver(AbstractDriver):
                         break
 
                 logging.info("%s ended at:   %s" % (query_id_str, endTime))
+                logging.info(
+                    "%s plans:\n%s"
+                    % (query_id_str, body.get("plans", {}).get("optimizedLogicalPlan"))
+                )
                 logging.info("%s metrics:    %s" % (query_id_str, body.get("metrics")))
 
                 qry_times[qry] = [
