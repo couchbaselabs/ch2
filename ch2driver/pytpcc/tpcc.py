@@ -99,7 +99,7 @@ def startLoading(driverClass, schema, scaleParameters, args, config, customerExt
 ## loaderFunc
 ## ==============================================
 def loaderFunc(clientId, driverClass, schema, scaleParameters, args, config, w_ids, customerExtraFields, ordersExtraFields, itemExtraFields, maxExtraFields, load_mode, load_format, kv_timeout, bulkload_batch_size, datagenSeed, debug):
-    driver = driverClass(args['ddl'], clientId, "L", schema, {}, 0, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, loadformat, kv_timeout, bulkload_batch_size)
+    driver = driverClass(args['ddl'], clientId, "L", schema, {}, 0, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, load_format, kv_timeout, bulkload_batch_size)
     assert driver != None
     logging.debug("Starting client execution: %s [warehouses=%d]" % (driver, len(w_ids)))
 
