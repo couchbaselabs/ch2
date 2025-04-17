@@ -93,13 +93,32 @@ def startLoading(driverClass, schema, scaleParameters, args, config, customerExt
     pool.close()
     logging.debug("Waiting for %d loaders to finish" % numClients)
     pool.join()
+
+    for i, r in enumerate(loader_results):
+        logging.info("Errors for Client ID %d process: %s" % (i, r.get()))
+
+
 ## DEF
 
 ## ==============================================
 ## loaderFunc
 ## ==============================================
 def loaderFunc(clientId, driverClass, schema, scaleParameters, args, config, w_ids, customerExtraFields, ordersExtraFields, itemExtraFields, maxExtraFields, load_mode, load_format, kv_timeout, bulkload_batch_size, datagenSeed, debug):
-    driver = driverClass(args['ddl'], clientId, "L", schema, {}, 0, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, load_format, kv_timeout, bulkload_batch_size)
+    driver = driverClass(
+        ddl=args["ddl"],
+        clientId=clientId,
+        TAFlag="L",
+        schema=schema,
+        preparedTransactionQueries={},
+        analyticalQueries=0,
+        customerExtraFields=customerExtraFields,
+        ordersExtraFields=ordersExtraFields,
+        itemExtraFields=itemExtraFields,
+        load_mode=load_mode,
+        load_format=load_format,
+        kv_timeout=kv_timeout,
+        bulkload_batch_size=bulkload_batch_size,
+    )
     assert driver != None
     logging.debug("Starting client execution: %s [warehouses=%d]" % (driver, len(w_ids)))
 
@@ -173,7 +192,14 @@ def startExecution(driverClass, schema, preparedTransactionQueries, analyticalQu
 ## executorFunc
 ## ==============================================
 def executorFunc(clientId, TAFlag, driverClass, schema, preparedTransactionQueries, analyticalQueries, qDone, warmupDurationQ, warmupDuration, warmupQueryIterations, numAClients, scaleParameters, args, config, debug):
-    driver = driverClass(args['ddl'], clientId, TAFlag, schema, preparedTransactionQueries, analyticalQueries)
+    driver = driverClass(
+        ddl=args["ddl"],
+        clientId=clientId,
+        TAFlag=TAFlag,
+        schema=schema,
+        preparedTransactionQueries=preparedTransactionQueries,
+        analyticalQueries=analyticalQueries,
+    )
     assert driver != None
     logging.debug("Starting client execution: %s" % driver)
 
@@ -269,6 +295,8 @@ if __name__ == '__main__':
     aparser.add_argument('--itemExtraFields', default=constants.CH2_ITEM_EXTRA_FIELDS["NOT_SET"], type=int,
                          help='Number of extra unused fields in Item')
 
+    aparser.add_argument('--docgen-load', action='store_true',
+                         help='Enable storing the data locally in JSON files')
     aparser.add_argument('--print-config', action='store_true',
                          help='Print out the default configuration file for the system and exit')
     aparser.add_argument('--debug', action='store_true',
@@ -402,12 +430,6 @@ if __name__ == '__main__':
             logging.info("Cannot specify multiple types of load")
             sys.exit(0)
 
-    if args['datasvc_load']:
-        if load_mode == constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]:
-            load_mode = constants.CH2_DRIVER_LOAD_MODE["DATASVC_LOAD"]
-        else:
-            logging.info("Cannot specify multiple types of load")
-            sys.exit(0)
 
     if args['bulkload_batch_size']:
         bulkload_batch_size = args['bulkload_batch_size']
@@ -415,12 +437,13 @@ if __name__ == '__main__':
     if args['kv_timeout']:
         kv_timeout = args['kv_timeout']
 
-    if args['qrysvc_load']:
-        if load_mode == constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]:
-            load_mode = constants.CH2_DRIVER_LOAD_MODE["QRYSVC_LOAD"]
-        else:
-            logging.info("Cannot specify multiple types of load")
-            sys.exit(0)
+    for load_mode_arg in ("datasvc_load", "qrysvc_load", "docgen_load"):
+        if args[load_mode_arg]:
+            if load_mode == constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]:
+                load_mode = constants.CH2_DRIVER_LOAD_MODE[load_mode_arg.upper()]
+            else:
+                logging.info("Cannot specify multiple types of load")
+                sys.exit(0)
 
     if not args['no_load'] and args['system'] == "nestcollections":
        if load_mode == constants.CH2_DRIVER_LOAD_MODE["NOT_SET"]:
@@ -490,14 +513,35 @@ if __name__ == '__main__':
     preparedTransactionQueries = {}
     val = -1
     if args['no_execute']:
-         val = 0
-         driver = driverClass(args['ddl'], val, "L", schema, preparedTransactionQueries, 0, customerExtraFields, ordersExtraFields, itemExtraFields, load_mode, load_format, kv_timeout, bulkload_batch_size)
+        val = 0
+        driver = driverClass(
+            ddl=args["ddl"],
+            clientId=val,
+            TAFlag="L",
+            schema=schema,
+            preparedTransactionQueries=preparedTransactionQueries,
+            analyticalQueries=0,
+            customerExtraFields=customerExtraFields,
+            ordersExtraFields=ordersExtraFields,
+            itemExtraFields=itemExtraFields,
+            load_mode=load_mode,
+            load_format=load_format,
+            kv_timeout=kv_timeout,
+            bulkload_batch_size=bulkload_batch_size,
+        )
     else:
         TAFlag = "T"
         if numTClients == 0:
             TAFlag = "A"
             val = 0
-        driver = driverClass(args['ddl'], val, TAFlag, schema, preparedTransactionQueries, analyticalQueries)
+        driver = driverClass(
+            ddl=args["ddl"],
+            clientId=val,
+            TAFlag=TAFlag,
+            schema=schema,
+            preparedTransactionQueries=preparedTransactionQueries,
+            analyticalQueries=analyticalQueries,
+        )
     assert driver != None, "Failed to create '%s' driver" % args['system']
     if args['print_config']:
         config = driver.makeDefaultConfig()
@@ -540,7 +584,23 @@ if __name__ == '__main__':
             l.execute()
             driver.loadFinish()
         else:
-            startLoading(driverClass, schema, scaleParameters, args, config, customerExtraFields, ordersExtraFields, itemExtraFields, maxExtraFields, load_mode, load_format, kv_timeout, bulkload_batch_size, datagenSeed)
+            args.pop("config")
+            startLoading(
+                driverClass,
+                schema,
+                scaleParameters,
+                args,
+                config,
+                customerExtraFields,
+                ordersExtraFields,
+                itemExtraFields,
+                maxExtraFields,
+                load_mode,
+                load_format,
+                kv_timeout,
+                bulkload_batch_size,
+                datagenSeed,
+            )
         load_time = time.time() - load_start
     ## IF
 

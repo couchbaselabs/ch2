@@ -42,7 +42,6 @@ import constants
 from util import *
 
 class Loader:
-    
     def __init__(self, driver, scaleParameters, w_ids, needLoadItems, maxExtraFields, datagenSeed):
         self.driver = driver
         self.genFlatSchema = self.driver.schema == constants.CH2_DRIVER_SCHEMA["CH2PPF"]
@@ -58,7 +57,6 @@ class Loader:
     ## execute
     ## ==============================================
     def execute(self):
-        
         ## Item Table
         if self.needLoadItems:
             logging.debug("Loading ITEM table")
@@ -70,10 +68,10 @@ class Loader:
             self.driver.loadFinishItem()
 
             ## Load CH tables
-            self.loadSupplier()        
+            self.loadSupplier()
             self.loadNation()
             self.loadRegion()
-            
+
         ## Then create the warehouse-specific tuples
         for w_id in self.w_ids:
             if self.datagenSeed != constants.CH2_DATAGEN_SEED_NOT_SET:
@@ -83,7 +81,7 @@ class Loader:
             self.loadWarehouse(w_id)
             self.driver.loadFinishWarehouse(w_id)
         ## FOR
-        
+
         return (None)
 
     ## ==============================================
@@ -124,7 +122,7 @@ class Loader:
     ## ==============================================
     def loadWarehouse(self, w_id):
         logging.debug("LOAD - %s: %d / %d" % (constants.TABLENAME_WAREHOUSE, w_id, len(self.w_ids)))
-        
+
         try:
             runDate = os.environ["RUN_DATE"]
         except:
@@ -167,7 +165,7 @@ class Loader:
             total_ol_amount = 0
             ## Select 10% of the customers to have bad credit
             selectedRows = self.randomGen.selectUniqueIds(self.scaleParameters.customersPerDistrict // 10, 1, self.scaleParameters.customersPerDistrict)
-            
+
             ## TPC-C 4.3.3.1. says that o_c_id should be a permutation of [1, 3000]. But since it
             ## is a c_id field, it seems to make sense to have it be a permutation of the
             ## customers. For the "real" thing this will be equivalent
@@ -191,11 +189,11 @@ class Loader:
             assert cIdPermutation[0] == 1
             assert cIdPermutation[self.scaleParameters.customersPerDistrict - 1] == self.scaleParameters.customersPerDistrict
             self.randomGen.rng.shuffle(cIdPermutation)
-            
+
             no_tuples = [ ]
             for o_id in range(1, self.scaleParameters.customersPerDistrict+1):
                 o_ol_cnt = self.randomGen.number(constants.MIN_OL_CNT, constants.MAX_OL_CNT)
-                
+
                 ## The last newOrdersPerDistrict are new orders
                 newOrder = ((self.scaleParameters.customersPerDistrict - self.scaleParameters.newOrdersPerDistrict) < o_id)
                 orderDate = c_tuples[cIdPermutation[o_id-1]-1][c_since_idx]
@@ -271,7 +269,7 @@ class Loader:
     ## DEF
 
     ## ==============================================
-    ## loadNation 
+    ## loadNation
     ## ==============================================
     def loadNation(self):
         ## Load all of the nations
@@ -545,7 +543,7 @@ class Loader:
     def generateNation(self, nationkey):
         n_nationkey = constants.NATIONS[nationkey][0]
         n_name = constants.NATIONS[nationkey][1]
-        n_regionkey = constants.NATIONS[nationkey][2]        
+        n_regionkey = constants.NATIONS[nationkey][2]
         n_comment = self.randomGen.randomStringMinMax(constants.MIN_NATION_COMMENT, constants.MAX_NATION_COMMENT)
 
         return [ n_nationkey, n_name, n_regionkey, n_comment ]
@@ -645,8 +643,8 @@ class Loader:
     ## ==============================================
     def generateNameAndAddress(self):
         """
-            Returns a name and a street address 
-            Used by both generateWarehouse and generateDistrict.
+        Returns a name and a street address
+        Used by both generateWarehouse and generateDistrict.
         """
         name = self.randomGen.astring(constants.MIN_NAME, constants.MAX_NAME)
         return [ name ] + self.generateStreetAddress()
@@ -677,7 +675,7 @@ class Loader:
             Returns address of supplier
         """
         address = self.randomGen.astring(constants.MIN_SUPPLIER_ADDRESS, constants.MAX_SUPPLIER_ADDRESS)
-        return address 
+        return address
     ## DEF
 
     ## ==============================================
@@ -710,23 +708,31 @@ class Loader:
     ## DEF
     def computeStartDate(self, runDate):
         startDateTime = datetime.strptime(runDate,  "%Y-%m-%d %H:%M:%S") - relativedelta(years=7)
-        return startDateTime 
+        return startDateTime
     ## DEF
 
     def computeEndDate(self, runDate):
         endDateTime = datetime.strptime(runDate,  "%Y-%m-%d %H:%M:%S") - timedelta(days=1)
-        return endDateTime 
+        return endDateTime
     ## DEF
 
     def computeRandomRangeDate(self, startDate, endDate):
-         delta = endDate - startDate
-         deltaSecs = (delta.days * self.numSecsPerDay) + delta.seconds
-         randomTime = self.randomGen.rng.randrange(deltaSecs)
-         return startDate + timedelta(seconds=randomTime)
+        delta = endDate - startDate
+        deltaSecs = (delta.days * self.numSecsPerDay) + delta.seconds
+        randomTime = int(self.randomGen.rng.random() * deltaSecs)
+        return startDate + timedelta(seconds=randomTime)
+
     ## DEF
 
     def computeRandomRangeTime(self, dateObj):
-        return dateObj.strftime("%Y-%m-%d %H:%M:%S")
+        return "%d-%02d-%02d %02d:%02d:%02d" % (
+            dateObj.year,
+            dateObj.month,
+            dateObj.day,
+            dateObj.hour,
+            dateObj.minute,
+            dateObj.second,
+        )
 
     ## DEF
 
