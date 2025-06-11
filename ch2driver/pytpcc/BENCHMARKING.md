@@ -4,7 +4,7 @@
 
 ### Workload Driver Node
 
-Deploy an AWS EC2 instance on which the CH2 benchmark code will be installed and executed.
+Deploy an AWS EC2 instance on which the CH2++ benchmark code will be installed and executed.
 
 >[!NOTE]
 > These instructions talk about AWS infrastructure, but everything here can be done equivalently on GCP and Azure too.
@@ -206,16 +206,16 @@ nohup python ./tpcc.py nestcollections \
 
 Explanation:
 
-- `nestcollections` refers to the CH2 driver implementation that should be used to load documents or run analytical queries. This is the one that must be used for running the benchmark against Couchbase clusters with nested JSON data.
+- `nestcollections` refers to the CH2++ driver implementation that should be used to load documents or run analytical queries. This is the one that must be used for running the benchmark against Couchbase clusters with nested JSON data.
 - `--tls` specifies that TLS connections should be made to the Couchbase clusters. This is necessary when connecting to Capella clusters.
 - `--userid` and --password specify the credentials for the cluster running the Data service, which in our case is the Capella Operational cluster.
 - `--userid-analytics` and `--password-analytics` specify the credentials for the cluster to which analytical queries will be sent. In our case this is the Capella Columnar cluster.
 - `--data-url` and `--multi-data-url` specify the hostnames/IPs of the Data service nodes.
-- The CH2 data schema imitates that of an inventory management system, and the primary way to control the size of the dataset is by setting the number of warehouses. This is done with the `--starting_warehouse` and `--warehouses` flags. We recommend keeping `--starting_warehouse` at 1 and varying `--warehouses`.
+- The CH2++ data schema imitates that of an inventory management system, and the primary way to control the size of the dataset is by setting the number of warehouses. This is done with the `--starting_warehouse` and `--warehouses` flags. We recommend keeping `--starting_warehouse` at 1 and varying `--warehouses`.
 - `--datagenSeed` sets the random seed for data generation. For consistency and reproducibility, we recommend using the same seed value for all benchmark runs.
 - `--tclients` controls the number of “transactional” clients which, in this case, are used to load data. A new subprocess is created for each client. We recommend setting this to the number of CPU cores on the driver node.
 - `--no-execute` specifies that the driver should not execute the benchmark. By default, the driver will load data and then execute the benchmark, so specifying this by itself tells the driver to only load data.
-- `--ch2pp` specifies that the full CH2++ data schema should be used (as opposed to the CH2 schema).
+- `--ch2pp` specifies that the full CH2++ data schema should be used (as opposed to the older CH2 schema).
 - `--datasvc-bulkload` specifies the loading method where documents are loaded in batches into the Data service. This is the fastest method.
 - `--customerExtraFields`, `--ordersExtraFields` and `--itemExtraFields` specify the number of extra, unused fields that should be added in the documents of the customer, orders and item collections respectively. In other words, it controls the width of the schemas for these collections. We recommend setting each of these to 64.
 

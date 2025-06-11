@@ -8,7 +8,7 @@ Requirements:
 
 - Python >= 3.9
 
-Clone the CH2 git repository:
+Clone the CH2++ git repository:
 
 ```bash
 git clone https://github.com/couchbaselabs/ch2.git
