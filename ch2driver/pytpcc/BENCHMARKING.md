@@ -141,7 +141,7 @@ This allows data to be streamed from the Capella Operational cluster to the Colu
 
 Create the remote link by following the instructions in the docs: [Stream Data from Couchbase Capella](https://docs.couchbase.com/columnar/sources/remote-cb-capella.html)
 
-Create a new database called **bench** and a new scope called **ch2pp** on the Columnar cluster. Then create one linked collection for each collection in bucket **bench**, scope **ch2pp** on the Capella Operational cluster.
+In the default database **Default** and the default scope **Default**, create one linked collection for each collection in the bucket **bench**, scope **ch2pp** on the Capella Operational cluster.
 
 Finally, **connect the link**.
 
