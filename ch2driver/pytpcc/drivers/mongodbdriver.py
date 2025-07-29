@@ -624,7 +624,7 @@ class MongodbDriver(AbstractDriver):
                 self.database.aggregate(pipeline)
                 e = time.time_ns()
                 end = time.time()
-                dur = str(e-s // 1_000_000)+"ms"
+                dur = str((e-s) // 1_000_000)+"ms"
 
                 startTime = time.strftime("%H:%M:%S", time.localtime(start))
 
