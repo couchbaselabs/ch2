@@ -2168,7 +2168,7 @@ CH2_MONGO_QUERIES ={
                   "COUNT(*) AS count_order "
            "FROM UNWIND (orders AS o WITH PATH => o_orderline) "
            "WHERE o.o_orderline.ol_delivery_d  > '2014-07-01 00:00:00' "
-           "GROUP BY o_orderline.ol_number AS ol_number "
+           "GROUP BY o.o_orderline.ol_number AS ol_number "
            "ORDER BY ol_number ",
 
     # Q02: Query for listing suppliers and their distributed items having the lowest
@@ -2578,7 +2578,7 @@ CH2PP_MONGO_QUERIES = {
                   "COUNT(*) AS count_order "
            "FROM UNWIND (orders AS o WITH PATH => o_orderline) "
            "WHERE o.o_orderline.ol_delivery_d  > '2014-07-01 00:00:00' "
-           "GROUP BY o_orderline.ol_number AS ol_number "
+           "GROUP BY o.o_orderline.ol_number AS ol_number "
            "ORDER BY ol_number ",
 
     # Q02: Query for listing suppliers and their distributed items having the lowest
@@ -2968,26 +2968,28 @@ CH2PP_MONGO_QUERIES = {
     # greater than average balance on their account. The county code is represented
     # by the first two characters of the phone number.
     "Q22": "SELECT country, COUNT(*) AS numcust, SUM(c.c_balance) AS totacctbal "
-           "FROM UNWIND ((SELECT * "
-                         "FROM UNWIND (customer AS ca WITH PATH => c_addresses)) AS c WITH PATH => c_phones) "
-           "WHERE SUBSTRING(c.c_phones.c_phone_number,0,1) IN "
-                                             "('1','2','3','4','5','6','7') "
-             "AND  c.c_addresses.c_address_kind = 'shipping' "
-             "AND  c.c_phones.c_phone_kind = 'contact' "
-             "AND c.c_balance > (SELECT AVG(c1.c_balance) "
-                                "FROM UNWIND (customer AS c1 WITH PATH => c_phones) "
-                                "WHERE c1.c_balance > 0.00 "
-                                  "AND c1.c_phones.c_phone_kind = 'contact' "
-                                  "AND SUBSTRING(c1.c_phones.c_phone_number,0,1) IN "
-                                        "('1','2','3','4','5','6','7') ) "
-             "AND NOT EXISTS (SELECT 1 "
-                             "FROM orders o "
-                             "WHERE o.o_c_id = c.c_id "
-                               "AND o.o_w_id = c.c_w_id "
-                               "AND o.o_d_id = c.c_d_id "
-                               "AND o.o_entry_d BETWEEN '2013-12-01 00:00:00' AND '2013-12-31 00:00:00') "
+           "FROM UNWIND (customer AS c WITH PATH => c_addresses) "
+           "WHERE EXISTS (SELECT * "
+                         "FROM UNWIND (customer AS c1 WITH PATH => c_phones) "
+                         "WHERE c1.c_id = c.c_id "
+                           "AND c1.c_d_id = c.c_d_id "
+                           "AND c1.c_w_id = c.c_w_id "
+                           "AND c1.c_phones.c_phone_kind = 'contact' "
+                           "AND SUBSTRING(c1.c_phones.c_phone_number,0,1) IN ('1','2','3','4','5','6','7')) "
+              "AND c.c_addresses.c_address_kind = 'shipping' "
+              "AND c.c_balance > (SELECT AVG(c1.c_balance) "
+                                 "FROM UNWIND (customer AS c1 WITH PATH => c_phones) "
+                                 "WHERE c1.c_balance > 0.00 "
+                                   "AND c1.c_phones.c_phone_kind = 'contact' "
+                                   "AND SUBSTRING(c1.c_phones.c_phone_number,0,1) IN ('1','2','3','4','5','6','7')) "
+              "AND NOT EXISTS (SELECT 1 "
+                              "FROM orders o "
+                              "WHERE o.o_c_id = c.c_id "
+                                "AND o.o_w_id = c.c_w_id "
+                                "AND o.o_d_id = c.c_d_id "
+                                "AND o.o_entry_d BETWEEN '2013-12-01 00:00:00' AND '2013-12-31 00:00:00') "
            "GROUP BY SUBSTRING(c.c_addresses.c_state,0,1) AS country "
-           "ORDER BY country "
+           "ORDER BY country"
 }
 
 CH2_QUERIES_PERM = [
