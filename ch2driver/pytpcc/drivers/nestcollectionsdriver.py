@@ -414,7 +414,7 @@ class NestcollectionsDriver(AbstractDriver):
                 cert_reqs="CERT_NONE",
                 socket_options=[  # Set TCP keep-alive options for long running analytics queries
                     (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),
-#                    (socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 120),
+                    (socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 120),
                     (socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 30),
                     (socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 20),
                 ],
